@@ -1,0 +1,12 @@
+.DS_Store
+.vscode/
+.bids_cache/
+__pycache__/
+licenses/
+dask-worker-space/
+venv/
+out/
+log/
+tmp/
+task_cache.csv
+.task_cache.csv
