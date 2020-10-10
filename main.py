@@ -1,291 +1,220 @@
-import sys # for python version check + sys.exit
-import os # for path
-from cli import readCLIArgs
-from daskrunner import DaskRunner, run
+import sys  # for python version check + sys.exit
+import os  # for cache file delete
+import shutil  # for cache dir delete
+import dask.distributed  # for MT
+import dask_jobqueue
+import dask_mpi
+from pipeline import Pipeline
+from cli import Executor, readCLIArgs, Executor
+from cmd_helpers import VMEngine
+from daskrunner import DaskRunner
+from runner import Runner
 from dataset import Dataset
 
+
+# Run the pipeline.
 if __name__ == '__main__':
-    args = readCLIArgs()
-
-    datasetPath = args.datasetPath  # @todo check char '/Volumes/1ToApfsNVME/data-bids/day2day'
-    datasetPath = os.path.normpath(datasetPath)
-    runner = DaskRunner('.task_cache.csv')
-    dataset = Dataset(datasetPath, '.bids_cache')
-    print("path: " + datasetPath)
-
-
     # 0. Check python version.
-    # @note f-strings require python 3.6, will throw syntax error instead though.
+    # @note f-strings require python 3.6, will throw syntax error instead
+    # though.
     assert sys.version_info >= (3, 6)
 
+    # Retrieve args
+    args = readCLIArgs()
+    datasetDir = args.datasetPath
+    outputDir = args.outputDir
+    vmEngine = args.vmEngine
+    executor = args.executor
+    reset = args.reset
+    enableBidsValidator = args.enableBidsValidator
+    enableMRIQC = args.enableMRIQC
+    enableSMRiPrep = args.enableSMRiPrep
+    enableFMRiPrep = args.enableFMRiPrep
 
-    # 1. Validate BIDS
-    def validateBids():
-        datasetAbsPath = os.path.abspath(datasetPath)
-        logPath = 'log/bids-validator.txt'
-        logPath = os.path.abspath(logPath)
-        logDir = os.path.dirname(logPath)
-        if not os.path.exists(logDir):
-            os.makedirs(logDir)
+    # Reset cache files/folders.
+    if reset:
+        shutil.rmtree('./__pycache__', ignore_errors=True)
+        shutil.rmtree(f'./{outputDir}', ignore_errors=True)
 
-        version = '1.5.4'
-        cmd = f'''
-            docker run -ti --rm
-                -v "{datasetAbsPath}:/input:ro"
-                --cpus 2.0
-                -m 6G
-                bids/validator:v{version}
-                /input
-                2>&1 >{logPath}
-        '''
+    # Setup task executor.
+    runner = None
+    if executor == Executor.NONE:
+        runner = Runner(f'{outputDir}/.task_cache.csv')
+    elif executor == Executor.LOCAL:
+        cluster = dask.distributed.LocalCluster()
+        cluster.scale(4)
+        client = dask.distributed.Client(cluster)
+        runner = DaskRunner(f'{outputDir}/.task_cache.csv', client)
+        print(client)
+    elif executor == Executor.SLURM:
+        cluster = dask_jobqueue.SLURMCluster()
+        cluster.scale(4)
+        client = dask.distributed.Client(cluster)
+        runner = DaskRunner(f'{outputDir}/.task_cache.csv', client)
+        print(client)
+    elif executor == Executor.MPI:
+        dask_mpi.initialize()
+        client = dask.distributed.Client()
+        runner = DaskRunner(f'{outputDir}/.task_cache.csv', client)
+        print(client)
 
-        didSucceed, returnCode, stdout, stderr = run(cmd)
+    # Retrieve dataset info.
+    dataset = Dataset(datasetDir, f'{outputDir}/.bids_cache')
 
-        return didSucceed, returnCode
+    # Setup pipeline tasks.
+    bidsValidator = {
+        VMEngine.NONE: 'bids-validator',
+        VMEngine.SINGULARITY: '../singularity-images/bids-validator-1.5.6.sif',
+        VMEngine.DOCKER: 'bids/validator:v1.5.6'
+    }
+    mriqc = {
+        VMEngine.NONE: 'mriqc',
+        VMEngine.SINGULARITY: '../singularity-images/mriqc-0.15.2.sif',
+        VMEngine.DOCKER: 'poldracklab/mriqc:0.15.2'
+    }
+    smriprep = {
+        VMEngine.NONE: 'smriprep',
+        VMEngine.SINGULARITY: '../singularity-images/smriprep-0.7.0.sif',
+        VMEngine.DOCKER: 'nipreps/smriprep:0.7.0'
+    }
+    fmriprep = {
+        VMEngine.NONE: 'fmriprep',
+        VMEngine.SINGULARITY: '../singularity-images/fmriprep-20.2.0.sif',
+        VMEngine.DOCKER: 'nipreps/fmriprep:20.2.0'
+    }
+    printf = {
+        VMEngine.NONE: 'printf'
+    }
+    pipeline = Pipeline(
+        bidsValidator={
+            'vmEngine': vmEngine,
+            'executable': bidsValidator[vmEngine]
+        },
+        mriqc={
+            'vmEngine': vmEngine,
+            'executable': mriqc[vmEngine]
+        },
+        smriprep={
+            'vmEngine': vmEngine,
+            'executable': smriprep[vmEngine]
+        },
+        fmriprep={
+            'vmEngine': vmEngine,
+            'executable': fmriprep[vmEngine]
+        },
+        # @note no vm for printf.
+        printf={
+            'vmEngine': VMEngine.NONE,
+            'executable': printf[VMEngine.NONE]
+        }
+    )
 
-
-    # 2. Run QC.
-    def generateMriQcSubjectReport(subjectId):
-        datasetAbsPath = os.path.abspath(datasetPath)
-        # @note must == the group task output dir one. Safe to parallelize.
-        outputDir = 'out/mriqc'
-        outputDir = os.path.abspath(outputDir)
-        logPath = f'log/mriqc/{subjectId}.txt'
-        logPath = os.path.abspath(logPath)
-        logDir = os.path.dirname(logPath)
-        if not os.path.exists(logDir):
-            os.makedirs(logDir)
-
-        # @note
-        # -m 6G fixes `concurrent.futures.process.BrokenProcessPool: A process in
-        # the process pool was terminated abruptly
-        # while the future was running or pending.`.
-        # cf. https://neurostars.org/t/mriqc-crashing-in-middle-of-scan/3173/3
-        # @todo kill on "Traceback (most recent call last):"
-
-        version = '0.15.2'
-        cmd = f'''
-            docker run -ti --rm
-                -v "{datasetAbsPath}:/input:ro"
-                -v "{outputDir}:/output"
-                --cpus 2.0
-                -m 6G
-                poldracklab/mriqc:{version}
-                /input /output
-                participant --participant_label {subjectId}
-                --no-sub
-                --nprocs 2
-                --mem_gb 6
-                2>&1 >{logPath}
-        '''
-
-        didSucceed, returnCode, stdout, stderr = run(cmd)
-
-        return didSucceed, returnCode
-
-
-    def generateMriQcGroupReport():
-        datasetAbsPath = os.path.abspath(datasetPath)
-        outputDir = 'out/mriqc'
-        outputDir = os.path.abspath(outputDir)
-        logPath = 'log/mriqc/group.txt'
-        logPath = os.path.abspath(logPath)
-        logDir = os.path.dirname(logPath)
-        if not os.path.exists(logDir):
-            os.makedirs(logDir)
-
-        version = '0.15.2'
-        cmd = f'''
-            docker run -ti --rm
-                -v "{datasetAbsPath}:/input:ro"
-                -v "{outputDir}:/output"
-                --cpus 2.0
-                -m 6G
-                poldracklab/mriqc:{version}
-                /input /output
-                group
-                --no-sub
-                --nprocs 2
-                --mem_gb 6
-                2>&1 >{logPath}
-        '''
-
-        didSucceed, returnCode, stdout, stderr = run(cmd)
-
-        return didSucceed, returnCode
-
-    # 3. Preprocess anat
-    def preprocessFMRiPrepAnatBySubject(subjectId):
-        datasetAbsPath = os.path.abspath(datasetPath)
-        outputDir = 'out/fmriprep'
-        outputDir = os.path.abspath(outputDir)
-        workDir = f'tmp/fmriprep/{subjectId}'
-        workDir = os.path.abspath(workDir)
-        licenseDir = 'licenses/'
-        licenseDir = os.path.abspath(licenseDir)
-        freesurferLicenseFile = 'freesurfer.txt'
-        logPath = f'log/fmriprep/anat/{subjectId}.txt'
-        logPath = os.path.abspath(logPath)
-        logDir = os.path.dirname(logPath)
-        if not os.path.exists(logDir):
-            os.makedirs(logDir)
-        
-        version = '20.2.0rc2'
-        cmd = f'''
-            docker run -ti --rm \
-                -v {datasetAbsPath}:/input:ro \
-                -v {outputDir}:/output \
-                -v {workDir}:/work \
-                -v {licenseDir}:/licenses:ro \
-                --cpus 2.0
-                -m 6G
-                poldracklab/fmriprep:{version} \
-                -w /work \
-                --fs-license /licenses/{freesurferLicenseFile} \
-                --notrack \
-                --skip-bids-validation \
-                --fs-no-reconall \
-                --ignore slicetiming \
-                --output-spaces MNI152NLin6Asym MNI152NLin2009cAsym OASIS30ANTs \
-                --anat-only \
-                --participant-label {subjectId} \
-                --nprocs 2 \
-                --mem-mb 6000 \
-                -vv \
-                /input /output \
-                participant
-                2>&1 >{logPath}
-        '''
-
-        didSucceed, returnCode, stdout, stderr = run(cmd)
-
-        return didSucceed, returnCode
-
-
-    # 3. Preprocess func
-    def preprocessFMRiPrepFuncBySession(subjectId, sessionId):
-        datasetAbsPath = os.path.abspath(datasetPath)
-        outputDir = 'out/fmriprep'
-        outputDir = os.path.abspath(outputDir)
-        workDir = f'tmp/fmriprep/{subjectId}-{sessionId}'
-        workDir = os.path.abspath(workDir)
-        licenseDir = 'licenses/'
-        licenseDir = os.path.abspath(licenseDir)
-        freesurferLicenseFile = 'freesurfer.txt'
-        logPath = f'log/fmriprep/func/{subjectId}-{sessionId}.txt'
-        logPath = os.path.abspath(logPath)
-        logDir = os.path.dirname(logPath)
-        if not os.path.exists(logDir):
-            os.makedirs(logDir)
-
-        cmd1 = '''
-            mkdir -p "''' + workDir + '''";
-            printf '%s' '{
-                "fmap": {
-                    "datatype": "fmap"
-                },
-                "bold": {
-                    "datatype": "func",
-                    "suffix": "bold",
-                    "session": "''' + sessionId + '''"
-                },
-                "sbref": {
-                    "datatype": "func",
-                    "suffix": "sbref",
-                    "session": "''' + sessionId + '''"
-                },
-                "flair": {"datatype": "anat", "suffix": "FLAIR"},
-                "t2w": {"datatype": "anat", "suffix": "T2w"},
-                "t1w": {"datatype": "anat", "suffix": "T1w"},
-                "roi": {"datatype": "anat", "suffix": "roi"}
-            }' > "''' + workDir + '''/bids_filter.json"
-        '''
-
-        didSucceed, returnCode, stdout, stderr = run(cmd1, oneliner=True)
-
+    # Execute pipeline.
+    if enableBidsValidator:
+        # 1. BidsValidator.
+        didSucceed = runner.runTask(
+            'validate_bids',
+            lambda: pipeline.validateBids(
+                datasetDir=datasetDir,
+                logFile=f'{outputDir}/log/validate-bids.txt'
+            )
+        )
         if not didSucceed:
-            return didSucceed, returnCode
+            sys.exit(1)
 
-        version = '20.2.0rc2'
-        cmd2 = f'''
-            docker run -ti --rm
-                -v "{datasetAbsPath}:/input:ro"
-                -v "{outputDir}:/output"
-                -v "{outputDir}:/anat-fast-track:ro"
-                -v "{workDir}:/work"
-                -v "{licenseDir}:/licenses:ro"
-                --cpus 2.0
-                -m 6G
-                poldracklab/fmriprep:{version}
-                -w /work
-                --fs-license /licenses/{freesurferLicenseFile}
-                --notrack
-                --skip-bids-validation
-                --fs-no-reconall
-                --ignore slicetiming
-                --participant-label {subjectId}
-                --bids-filter-file /work/bids_filter.json
-                --nprocs 2
-                --mem-mb 6000
-                -vv
-                /input /output
-                participant
-                2>&1 >{logPath}
-        '''
-
-        didSucceed, returnCode, stdout, stderr = run(cmd2)
-
-        return didSucceed, returnCode
-
-
-    # 1. BidsValidator.
-    didSucceed = runner.runTask(
-        'validate_bids',
-        lambda: validateBids()
-    )
-    if not didSucceed:
-        sys.exit(1)
-
-    # 2. MRIQC: qc by subjects.
     subjectIds = dataset.getSubjectIds()
-    successfulSubjectIds, failedSubjectIds = runner.batchTask(
-        'mriqc_subj',
-        lambda subjectId: generateMriQcSubjectReport(subjectId),
-        subjectIds
-    )
-    if len(successfulSubjectIds) == 0:
-        sys.exit(2)
+    if enableMRIQC:
+        # 2. MRIQC: qc by subjects.
+        successfulSubjectIds, failedSubjectIds = runner.batchTask(
+            'mriqc_subj',
+            lambda subjectId: pipeline.generateMriQcSubjectReport(
+                datasetDir=datasetDir,
+                workDir=f'{outputDir}/tmp/mriqc/sub-{subjectId}',
+                outputDir=f'{outputDir}/derivatives/mriqc',
+                logFile=f'{outputDir}/log/mriqc/sub-{subjectId}.txt',
+                subjectId=subjectId
+            ),
+            subjectIds
+        )
+        if len(successfulSubjectIds) == 0:
+            sys.exit(2)
 
-    # 3. MRIQC: group qc.
-    didSucceed = runner.runTask(
-        'mriqc_group',
-        lambda: generateMriQcGroupReport()
-    )
-    if not didSucceed:
-        sys.exit(3)
+        # 3. MRIQC: group qc.
+        didSucceed = runner.runTask(
+            'mriqc_group',
+            lambda: pipeline.generateMriQcGroupReport(
+                datasetDir=datasetDir,
+                workDir=f'{outputDir}/tmp/mriqc/group',
+                outputDir=f'{outputDir}/derivatives/mriqc',
+                logFile=f'{outputDir}/log/mriqc/group.txt'
+            )
+        )
+        if not didSucceed:
+            sys.exit(3)
 
-    # 4. FMRiPrep: anat by subjects.
-    successfulSubjectIds, failedSubjectIds = runner.batchTask(
-        'fmriprep_anat',
-        lambda subjectId: preprocessFMRiPrepAnatBySubject(subjectId),
-        successfulSubjectIds
-    )
-    if len(successfulSubjectIds) == 0:
-        sys.exit(4)
+        # Limit next step's subject ids to the one that succeeded MRIQC.
+        subjectIds = successfulSubjectIds
 
-    # 5. FMRiPrep: func by subjects.
+    if enableSMRiPrep:
+        # 4. SMRiPrep: anat by subjects.
+        successfulSubjectIds, failedSubjectIds = runner.batchTask(
+            'smriprep_anat',
+            lambda subjectId: pipeline.preprocessSMRiPrepAnatBySubject(
+                datasetDir=datasetDir,
+                workDir=f'{outputDir}/tmp/smriprep/anat/sub-{subjectId}',
+                outputDir=f'{outputDir}/derivatives',  # /smriprep will be add by the cmd.
+                logFile=f'{outputDir}/log/smriprep/anat/sub-{subjectId}.txt',
+                freesurferLicenseFile='./licenses/freesurfer.txt',
+                # templateflowDataDir='./templateflow',
+                subjectId=subjectId
+            ),
+            subjectIds
+        )
+        if len(successfulSubjectIds) == 0:
+            sys.exit(4)
+
+        # Limit next step's subject ids to the one that succeeded MRIQC.
+        subjectIds = successfulSubjectIds
+
     sessionIds = [
         (subjectId, sessionId)
-        for subjectId in successfulSubjectIds
+        for subjectId in subjectIds
         for sessionId in dataset.getSessionIdsBySubjectId(subjectId)
     ]
-    successfulSessionIds, failedSessionIds = runner.batchTask(
-        'fmriprep_func',
-        lambda subjectId, sessionId:
-            preprocessFMRiPrepFuncBySession(subjectId, sessionId),
-        sessionIds
-    )
-    if len(successfulSessionIds) == 0:
-        sys.exit(5)
+    if enableFMRiPrep:
+        # 5 FMRiPrep: generate sessions' func file filters.
+        successfulSessionIds, failedSessionIds = runner.batchTask(
+            'fmriprep_filter',
+            lambda subjectId, sessionId: pipeline.generateFMRiPrepSessionFilter(
+                logFile=f'{outputDir}/log/fmriprep/filters/sub-{subjectId}.txt',
+                bidsFilterFile=f'{outputDir}/tmp/fmriprep/func/sub-{subjectId}/ses-{sessionId}/filter.json',
+                sessionId=sessionId
+            ),
+            sessionIds
+        )
+        if len(successfulSessionIds) == 0:
+            sys.exit(5)
 
-    # 6. Merge result and generate reports.
+        # 6. FMRiPrep: func by subjects.
+        successfulSessionIds, failedSessionIds = runner.batchTask(
+            'fmriprep_func',
+            lambda subjectId, sessionId: pipeline.preprocessFMRiPrepFuncBySession(
+                datasetDir=datasetDir,
+                anatsDerivativesDir=f'{outputDir}/derivatives/smriprep',
+                workDir=f'{outputDir}/tmp/fmriprep/func/sub-{subjectId}/ses-{sessionId}',
+                outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
+                logFile=f'{outputDir}/log/fmriprep/func/sub-{subjectId}/ses-{sessionId}.txt',
+                freesurferLicenseFile='./licenses/freesurfer.txt',
+                templateflowDataDir='./templateflow',
+                bidsFilterFile=f'{outputDir}/tmp/fmriprep/func/sub-{subjectId}/ses-{sessionId}/filter.json',
+                subjectId=subjectId,
+                sessionId=sessionId
+            ),
+            successfulSessionIds
+        )
+        if len(successfulSessionIds) == 0:
+            sys.exit(6)
+
+        # Limit next step's subject/session ids to the one that succeeded
+        # MRIQC.
+        sessionIds = successfulSessionIds

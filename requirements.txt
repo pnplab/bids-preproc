@@ -2,3 +2,5 @@ dask
 pandas
 sarge
 pybids
+dask_jobqueue
+dask_mpi

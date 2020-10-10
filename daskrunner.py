@@ -1,24 +1,12 @@
 import collections  # for sequence type unpacking in higher order functions
-import os  # for path
-import sarge
-import time  # for sleep to avoid infinite loop while fetching run log
-from task_history import TaskHistory
 from typing import Set
 import dask
-import dask_jobqueue
-
-from runner import Runner, run
-from dask.distributed import Client, LocalCluster
-from dask_jobqueue import SLURMCluster
+from runner import Runner
 
 
 class DaskRunner(Runner):
-    def __init__(self, historyCachePath: str):
+    def __init__(self, historyCachePath: str, client: dask.distributed.Client):
         super().__init__(historyCachePath)
-
-        cluster = LocalCluster()
-        cluster.scale(4)
-        client = Client(cluster)
 
         self._client = client
 
@@ -29,7 +17,7 @@ class DaskRunner(Runner):
         def blockingTaskFn(*args, **kwargs):
             delayedTaskFn = dask.delayed(taskFn)
             delayedResult = delayedTaskFn(*args, **kwargs)
-            returnValues = delayedResult.compute()
+            returnValues = client.compute(delayedResult)
             return returnValues
 
         # Run task.
@@ -66,7 +54,9 @@ class DaskRunner(Runner):
 
         # Generate a list of successful itemIds.
         successfulItemIds = [
-            itemId for itemId, returnValues in results.items() if returnValues[0] == True
+            itemId
+            for itemId, returnValues in results.items()
+            if returnValues[0] == True  # noqa: E712
         ]
 
         # Generate a list of unsuccessful itemIds.
@@ -81,6 +71,6 @@ class DaskRunner(Runner):
             cache.writeTaskCache(taskItemName, didSucceed, returnCode)
 
         print(f'Batch {taskName} {str(successfulItemIds)} succeeded.')
-        print(f'Batch {taskName} {str(failedItemIds)} failed.'.replace('    ', ''))
+        print(f'Batch {taskName} {str(failedItemIds)} failed.')
 
         return successfulItemIds, failedItemIds

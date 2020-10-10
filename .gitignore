@@ -1,6 +1,8 @@
 .DS_Store
 .vscode/
+.git/
 .bids_cache/
+templateflow/
 __pycache__/
 licenses/
 dask-worker-space/
@@ -10,3 +12,5 @@ log/
 tmp/
 task_cache.csv
 .task_cache.csv
+
+day2day/

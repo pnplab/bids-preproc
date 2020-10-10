@@ -1,49 +1,48 @@
 import collections  # for sequence type unpacking in higher order functions
-import os  # for path
-import sarge
-import time  # for sleep to avoid infinite loop while fetching run log
+# import sarge
+# import time  # for sleep to avoid infinite loop while fetching run log
 from task_history import TaskHistory
 from typing import Set
 
 
-def run(command: str, oneliner: bool = True) -> bool:
-    # Strip command from newlines / tabs.
-    if oneliner:
-        command = command.replace('\n', ' ').replace('    ', '')
+# def run(command: str, oneliner: bool = True) -> bool:
+#     # Strip command from newlines / tabs.
+#     if oneliner:
+#         command = command.replace('\n', ' ').replace('    ', '')
 
-    # Launch command and capture stdout/stderr stream.
-    stream = sarge.Capture()
-    result = sarge.run(command, async_=True, stdout=stream, stderr=stream,
-                        shell=True)
+#     # Launch command and capture stdout/stderr stream.
+#     stream = sarge.Capture()
+#     result = sarge.run(command, async_=True, stdout=stream, stderr=stream,
+#                        shell=True)
 
-    # Wait for result object to be fully instantiated (especially
-    # returncode property, due to async_ property which creates
-    # it in another thread).
-    result.commands[0].poll()
+#     # Wait for result object to be fully instantiated (especially
+#     # returncode property, due to async_ property which creates
+#     # it in another thread).
+#     result.commands[0].poll()
 
-    # Loop until command has finished
-    while (result.returncode is None):
-        # Write received stdout/stderr output from stream.
-        while (line := stream.readline(timeout=1)):
-            print('> ' + line.decode('utf-8'), end='')
+#     # Loop until command has finished
+#     while (result.returncode is None):
+#         # Write received stdout/stderr output from stream.
+#         while (line := stream.readline(timeout=1)):
+#             print('> ' + line.decode('utf-8'), end='')
 
-        # Delay next iteration in order to avoid 100% CPU usage due to
-        # infinite loop.
-        time.sleep(0.05)
+#         # Delay next iteration in order to avoid 100% CPU usage due to
+#         # infinite loop.
+#         time.sleep(0.05)
 
-        # Update returncode.
-        result.commands[0].poll()
+#         # Update returncode.
+#         result.commands[0].poll()
 
-    # Wait for app end (optional since we loop on returncode existance).
-    result.wait()
-    # print('return code: %s' % result.returncode)
+#     # Wait for app end (optional since we loop on returncode existance).
+#     result.wait()
+#     # print('return code: %s' % result.returncode)
 
-    # Close output stream.
-    stream.close()
+#     # Close output stream.
+#     stream.close()
 
-    didSucceed = True if result.returncode == 0 else False
-    return didSucceed, result.returncode, result.stdout.text, \
-        result.stderr.text
+#     didSucceed = True if result.returncode == 0 else False
+#     return didSucceed, result.returncode, result.stdout.text, \
+#         result.stderr.text
 
 
 class Runner:
@@ -99,7 +98,7 @@ class Runner:
                                           itemId)
             # Store itemId if successful.
             if didSucceed:
-                successfulItemIds.add(itemId)
+                successfulItemIds.append(itemId)
 
         # Generate a list of unsuccessful itemIds.
         failedItemIds = [
@@ -107,7 +106,8 @@ class Runner:
         ]
 
         print(f'Batch {taskName} {str(successfulItemIds)} succeeded.')
-        print(f'Batch {taskName} {str(failedItemIds)} failed.'.replace('    ', ''))
+        print(f'Batch {taskName} {str(failedItemIds)} failed.'
+              .replace('    ', ''))
 
         return successfulItemIds, failedItemIds
 
@@ -115,6 +115,6 @@ class Runner:
         cache = self._history
 
         taskRecord = cache.readTaskCache(taskName)
-        hasSucceeded = taskRecord is not None and taskRecord['did_succeed'] == \
-            True
-        return hasSucceeded
+        didSucceed = taskRecord is not None \
+            and taskRecord['did_succeed'] == True  # noqa: E712
+        return didSucceed
