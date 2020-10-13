@@ -1,6 +1,6 @@
 from typing import Callable, Dict
-from cmd_helpers import InputDir, InputFile, OutputDir, OutputFile, \
-    createTaskForCmd, VMEngine
+from src.cmd_helpers import InputDir, InputFile, OutputDir, OutputFile, \
+    createTaskForCmd
 
 
 class Pipeline:

@@ -5,6 +5,7 @@ from typing import Set
 # Allow leading dot in cache path.
 config.set_option('extension_initial_dot', True)
 
+
 class Dataset:
     def __init__(self, bidsDatasetPath: str, cachePath: str = 'bids_cache'):
         # @todo serialize dataset path within name

@@ -5,11 +5,11 @@ import dask.distributed  # for MT
 import dask_jobqueue
 import dask_mpi
 from pipeline import Pipeline
-from cli import Executor, readCLIArgs, Executor
-from cmd_helpers import VMEngine
-from daskrunner import DaskRunner
-from runner import Runner
-from dataset import Dataset
+from cli import readCLIArgs, Executor
+from src.cmd_helpers import VMEngine
+from src.daskrunner import DaskRunner
+from src.runner import Runner
+from src.dataset import Dataset
 
 
 # Run the pipeline.

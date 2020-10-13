@@ -1,7 +1,7 @@
 import collections  # for sequence type unpacking in higher order functions
 # import sarge
 # import time  # for sleep to avoid infinite loop while fetching run log
-from task_history import TaskHistory
+from src.task_history import TaskHistory
 from typing import Set
 
 

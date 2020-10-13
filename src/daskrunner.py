@@ -1,7 +1,7 @@
 import collections  # for sequence type unpacking in higher order functions
 from typing import Set
 import dask
-from runner import Runner
+from src.runner import Runner
 
 
 class DaskRunner(Runner):
