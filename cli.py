@@ -1,7 +1,8 @@
 import argparse
+import psutil
+import sys
 from enum import Enum
 from src.cmd_helpers import VMEngine
-
 
 class Executor(Enum):
     NONE = 'none'
@@ -38,7 +39,7 @@ def readCLIArgs():
         help='virtual machine engine used to run the command.',
         dest='vmEngine'
     )
-    parser.add_argument(
+    parser.add_argument( # @todo rename to scheduler instead
         '--executor',
         type=Executor,
         choices=list(Executor),
@@ -70,6 +71,53 @@ def readCLIArgs():
         '--reset',
         action='store_true',
         dest='reset'
+    )
+
+    # @warning these are only used with slurm.
+    
+    defaultMemoryGb = psutil.virtual_memory().total / 1024 / 1024 / 1024
+    parser.add_argument(
+        '--worker-memory-gb',
+        dest='workerMemoryGb',
+        type=int,
+        default=defaultMemoryGb
+    )
+    cpuCount = psutil.cpu_count()
+    parser.add_argument(
+        '--worker-cpu-count',
+        dest='workerCpuCount',
+        type=int,
+        default=cpuCount
+    )
+    parser.add_argument( # @todo throw warning if != 1 and executor is not slurm
+        '--worker-count',
+        dest='workerCount',
+        type=int,
+        default=1,
+        required='slurm' in sys.argv
+    )
+    # @todo throw warning if executor is not slurm
+    # @todo check as time (type==func)
+    parser.add_argument(
+        '--worker-walltime',
+        dest='workerWallTime',
+        type=str,
+        default='01:00:00',
+        required='slurm' in sys.argv
+    )
+    parser.add_argument(
+        '--worker-local-dir',
+        dest='workerLocalDir',
+        type=str,
+        help='archive dataset on remote file system and extract on worker node\'s local file system to avoid overwhelming i/o',
+        default=None
+    )
+    parser.add_argument(
+        '--worker-shared-dir',
+        dest='workerSharedDir',
+        type=str,
+        help='store compressed shared output on remote shared file system to avoid overwhelming i/o and locking parent dir on write (lustre)',
+        default=None
     )
 
     args = parser.parse_args()

@@ -1,57 +1,8 @@
-FROM debian:buster-20200908-slim
+FROM ubuntu:xenial-20200114
 
 # The popularity-contest is causing docker build to hang on apt install.
 # cf. https://github.com/BRAINSia/BRAINSTools/issues/382
 ARG DEBIAN_FRONTEND=noninteractive
-
-# Install neurodebian.
-# cf. https://github.com/neurodebian/dockerfiles/blob/54ea480e6e3b2563e3e5dcd3df74ca3d280876e1/dockerfiles/xenial/Dockerfile
-# - PGP to prevent "gnupg, gnupg2 and gnupg1 do not seem to be installed, but 
-# one of them is required for this operation"
-# - Neurodebian for debian buster cf. https://neuro.debian.net/
-# - Minimalistic package to assist with freezing the APT configuration
-# which would be coming from neurodebian repo.
-# Also install and enable eatmydata to be used for all apt-get calls
-# to speed up docker builds.
-RUN set -x \
-# cf. https://bugs.debian.org/830696 (apt uses gpgv by default in newer releases, rather than gpg)
-    && apt-get update \
-	&& { \
-		which gpg \
-		|| apt-get install -y --no-install-recommends gnupg \
-	; } \
-# Ubuntu includes "gnupg" (not "gnupg2", but still 2.x), but not dirmngr, and gnupg 2.x requires dirmngr
-# so, if we're not running gnupg 1.x, explicitly install dirmngr too
-	&& { \
-		gpg --version | grep -q '^gpg (GnuPG) 1\.' \
-		|| apt-get install -y --no-install-recommends dirmngr \
-	; } \
-	&& rm -rf /var/lib/apt/lists/* \
-# apt-key is a bit finicky during "docker build" with gnupg 2.x, so install the repo key the same way debian-archive-keyring does (/etc/apt/trusted.gpg.d)
-# this makes "apt-key list" output prettier too!
-	&& export GNUPGHOME="$(mktemp -d)" \
-	&& gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys DD95CC430502E37EF840ACEEA5D32F012649A5A9 \
-	&& gpg --batch --export DD95CC430502E37EF840ACEEA5D32F012649A5A9 > /etc/apt/trusted.gpg.d/neurodebian.gpg \
-	&& rm -rf "$GNUPGHOME" \
-	&& apt-key list | grep neurodebian \
-# install neurodebian cf. https://neuro.debian.net/ 
-    && wget -O- http://neuro.debian.net/lists/buster.de-md.full \
-    | tee /etc/apt/sources.list.d/neurodebian.sources.list \
-# cf. https://bugs.debian.org/830696
-    && apt-key adv --recv-keys --keyserver hkp://pool.sks-keyservers.net:80 0xA5D32F012649A5A9 \
-	&& apt-get update \
-	&& apt-get install -y --no-install-recommends neurodebian-freeze eatmydata \
-	&& ln -s /usr/bin/eatmydata /usr/local/bin/apt-get \
-# install nodejs (for bids-validator)
-# cf. https://github.com/nodesource/distributions/blob/master/README.md#installation-instructions
-    && curl -sL https://deb.nodesource.com/setup_14.x | bash - \
-# install npm
-    && apt-get install -y --no-install-recommends npm \
-    && npm install npm@latest -g \
-	&& rm -rf apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
-# in/stall bids-validator.
-RUN npm install -g bids-validator@1.5.6
-
 
 
 # Install fmriprep dependances. - removed nodejs and bids validator, previously installed.
@@ -70,6 +21,19 @@ RUN apt-get update && \
                     git && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Installing and setting up miniconda
+RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh && \
+    bash Miniconda3-4.5.11-Linux-x86_64.sh -b -p /usr/local/miniconda && \
+    rm Miniconda3-4.5.11-Linux-x86_64.sh
+
+# Set CPATH for packages relying on compiled libs (e.g. indexed_gzip)
+ENV PATH="/usr/local/miniconda/bin:$PATH" \
+    CPATH="/usr/local/miniconda/include/:$CPATH" \
+    LANG="C.UTF-8" \
+    LC_ALL="C.UTF-8" \
+    PYTHONNOUSERSITE=1
+
+# cf. https://docs.scipy.org/doc/scipy-1.1.0/reference/building/linux.html
 # Install latest pandoc
 RUN curl -o pandoc-2.2.2.1-1-amd64.deb -sSL "https://github.com/jgm/pandoc/releases/download/2.2.2.1/pandoc-2.2.2.1-1-amd64.deb" && \
     dpkg -i pandoc-2.2.2.1-1-amd64.deb && \
@@ -120,17 +84,26 @@ ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends wget \
-    && wget -O- http://neuro.debian.net/lists/buster.de-fzj.full | tee /etc/apt/sources.list.d/neurodebian.sources.list \
+    && wget -O- http://neuro.debian.net/lists/xenial.de-fzj.full | tee /etc/apt/sources.list.d/neurodebian.sources.list \
     && apt-key adv --recv-keys --keyserver hkp://pool.sks-keyservers.net:80 0xA5D32F012649A5A9
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-                    fsl-core=5.0.9-5~nd100+1 \
+                    fsl-core=5.0.9-5~nd16.04+1 \
                     fsl-mni152-templates=5.0.7-2 \
-                    afni=18.0.05+git24-gb25b21054~dfsg.1-1~nd100+1 \
+                    afni=16.2.07~dfsg.1-5~nd16.04+1 \
                     convert3d \
-                    connectome-workbench=1.4.2-1~nd100+1 \
+                    connectome-workbench=1.3.2-2~nd16.04+1 \
                     git-annex-standalone && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# install nodejs (for bids-validator)
+# cf. https://github.com/nodesource/distributions/blob/master/README.md#installation-instructions
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install npm@latest -g \
+	&& rm -rf apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
+# in/stall bids-validator.
+RUN npm install -g bids-validator@1.5.6
 
 ENV FSLDIR="/usr/share/fsl/5.0" \
     FSLOUTPUTTYPE="NIFTI_GZ" \
@@ -165,19 +138,14 @@ RUN mkdir -p /opt/ICA-AROMA && \
 ENV PATH="/opt/ICA-AROMA:$PATH" \
     AROMA_VERSION="0.4.5"
 
-# Installing and setting up miniconda
-RUN curl -sSLO https://repo.continuum.io/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh && \
-    bash Miniconda3-4.5.11-Linux-x86_64.sh -b -p /usr/local/miniconda && \
-    rm Miniconda3-4.5.11-Linux-x86_64.sh
-
-# Set CPATH for packages relying on compiled libs (e.g. indexed_gzip)
-ENV PATH="/usr/local/miniconda/bin:$PATH" \
-    CPATH="/usr/local/miniconda/include/:$CPATH" \
-    LANG="C.UTF-8" \
-    LC_ALL="C.UTF-8" \
-    PYTHONNOUSERSITE=1
+# Create a shared $HOME directory
+RUN useradd -m -s /bin/bash -G users my_user
+#USER my_user
+WORKDIR /home/my_user
+ENV HOME="/home/my_user"
 
 # Installing precomputed python packages
+# removed: 
 RUN conda install -y python=3.7.1 \
                      pip=19.1 \
                      mkl=2018.0.3 \
@@ -197,23 +165,19 @@ RUN conda install -y python=3.7.1 \
     conda build purge-all; sync && \
     conda clean -tipsy && sync
 
+
 # Unless otherwise specified each process should only use one thread - nipype
 # will handle parallelization
 ENV MKL_NUM_THREADS=1 \
     OMP_NUM_THREADS=1
 
-# Create a shared $HOME directory
-RUN useradd -m -s /bin/bash -G users fmriprep
-WORKDIR /home/fmriprep
-ENV HOME="/home/fmriprep"
-
 # Precaching fonts, set 'Agg' as default backend for matplotlib
 RUN python -c "from matplotlib import font_manager" && \
     sed -i 's/\(backend *: \).*$/\1Agg/g' $( python -c "import matplotlib; print(matplotlib.matplotlib_fname())" )
 
-# Precaching atlases - install templateflow (1.4.1)
-RUN pip install --no-cache-dir templateflow == 1.4.1 && \
-    python -c "from templateflow import api as tfapi; \
+# Precaching atlases - install templateflow
+RUN python -m pip install --no-cache-dir templateflow>0.6
+RUN python -c "from templateflow import api as tfapi; \
                tfapi.get('MNI152NLin6Asym', resolution=(1, 2), suffix='T1w', desc=None); \
                tfapi.get('MNI152NLin6Asym', resolution=(1, 2), desc='brain', suffix='mask'); \
                tfapi.get('MNI152NLin2009cAsym', resolution=(1, 2), suffix='T1w', desc=None); \
@@ -225,20 +189,46 @@ RUN pip install --no-cache-dir templateflow == 1.4.1 && \
                tfapi.get('fsaverage', density='164k', desc='std', suffix='sphere'); \
                tfapi.get('fsaverage', density='164k', desc='vaavg', suffix='midthickness'); \
                tfapi.get('fsLR', density='32k'); \
-               tfapi.get('MNI152NLin6Asym', resolution=2, atlas='HCP', suffix='dseg')" && \
-    find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
+               tfapi.get('MNI152NLin6Asym', resolution=2, atlas='HCP', suffix='dseg'); \
+               tfapi.get('MNI152NLin6Asym'); \
+               tfapi.get('MNI152NLin2009cAsym'); \
+               tfapi.get('OASIS30ANTs'); \
+               tfapi.get('fsaverage'); \
+               tfapi.get('fsLR');"
+RUN find $HOME/.cache/templateflow -type d -exec chmod go=u {} + && \
     find $HOME/.cache/templateflow -type f -exec chmod go=u {} +
 
-# InstallFMRIPREP
-RUN python3 -m pip install fmriprep==20.2.0
+# Install FMRIPREP
+RUN python -m pip install fmriprep==20.2.0
+ENV IS_DOCKER_8395080871=1
+
+# Install SMRIPREP
+# cf. https://pypi.org/project/smriprep/
+RUN python -m pip install smriprep==0.7.0
+
+# Install MRIQC
+# cf. https://mriqc.readthedocs.io/en/latest/install.html + 
+# https://pypi.org/project/mriqc/#history
+RUN python -m pip install mriqc==0.15.2
 
 RUN find $HOME -type d -exec chmod go=u {} + && \
     find $HOME -type f -exec chmod go=u {} + && \
     rm -rf $HOME/.npm $HOME/.conda $HOME/.empty
-
-ENV IS_DOCKER_8395080871=1
-
 RUN ldconfig
-WORKDIR /tmp/
-ENTRYPOINT ["/usr/local/miniconda/bin/fmriprep"]
+
+# RUN conda update conda  # needed for conda activate
+
+# Install our pipeline
+COPY requirements.txt /preprocessing-src/requirements.txt
+WORKDIR /preprocessing-src
+RUN python -m pip install -r requirements.txt
+
+COPY . /preprocessing-src
+
+# Fix smriprep cf. https://github.com/nipreps/smriprep/issues/224
+COPY smriprep-fasttrack-fix/ /usr/local/miniconda/lib/python3.7/site-packages/smriprep/smriprep/utils/  
+
+# RUN apt-get install -y openmpi-bin
+
+ENTRYPOINT ["python", "main.py"]
 

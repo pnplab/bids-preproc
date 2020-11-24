@@ -63,7 +63,9 @@ class Runner:
             print(f'Task {taskName} starting.')
 
             # Run task.
-            didSucceed, returnCode = taskFn(*args, **kwargs)
+            commandResult = taskFn(*args, **kwargs)
+            didSucceed = commandResult.didSucceed
+            returnCode = commandResult.returnCode
 
             # Record result.
             cache.writeTaskCache(taskName, didSucceed, returnCode)

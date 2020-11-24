@@ -1,6 +1,7 @@
 from typing import Callable, Dict
+import math
 from src.cmd_helpers import InputDir, InputFile, OutputDir, OutputFile, \
-    createTaskForCmd
+    createTaskForCmd, MyPath, VMEngine
 
 
 class Pipeline:
@@ -11,13 +12,26 @@ class Pipeline:
     generateFMRiPrepSessionFilter: Callable
     preprocessFMRiPrepFuncBySession: Callable
 
+    def validateBids(self, *args, **kargs):
+        return self._validateBids(*args, **kargs)
+    def generateMriQcSubjectReport(self, *args, **kargs):
+        return self._generateMriQcSubjectReport(*args, **kargs)
+    def generateMriQcGroupReport(self, *args, **kargs):
+        return self._generateMriQcGroupReport(*args, **kargs)
+    def preprocessSMRiPrepAnatBySubject(self, *args, **kargs):
+        return self._preprocessSMRiPrepAnatBySubject(*args, **kargs)
+    def generateFMRiPrepSessionFilter(self, *args, **kargs):
+        return self._generateFMRiPrepSessionFilter(*args, **kargs)
+    def preprocessFMRiPrepFuncBySession(self, *args, **kargs):
+        return self._preprocessFMRiPrepFuncBySession(*args, **kargs)
+
     # @warning docker requires manual app modification.
     # https://stackoverflow.com/questions/44533319/how-to-assign-more-memory-to-docker-container/44533437#44533437
     def __init__(self, bidsValidator: Dict[str, str], mriqc: Dict[str, str],
                  smriprep: Dict[str, str], fmriprep: Dict[str, str],
                  printf: Dict[str, str]) -> None:
-
-        self.validateBids = createTaskForCmd(
+        
+        self._validateBids = self._createTaskForCmd(
             bidsValidator['vmEngine'],
             bidsValidator['executable'],
             '''
@@ -27,15 +41,15 @@ class Pipeline:
             datasetDir=InputDir
         )
 
-        self.generateMriQcSubjectReport = createTaskForCmd(
+        self._generateMriQcSubjectReport = self._createTaskForCmd(
             mriqc['vmEngine'],
             mriqc['executable'],
             '''
                 {0}
                     --no-sub
-                    --nprocs 2
-                    --mem_gb 6
-                    -vv
+                    --nprocs {nproc}
+                    --mem_gb {memGb}
+                    -vvvv
                     -w "{workDir}"
                     "{datasetDir}"
                     "{outputDir}"
@@ -45,18 +59,19 @@ class Pipeline:
             # Map paths to vm volumes using argument decorators.
             workDir=OutputDir,
             datasetDir=InputDir,
-            outputDir=OutputDir
+            outputDir=OutputDir,
+            memGb=math.floor
         )
 
-        self.generateMriQcGroupReport = createTaskForCmd(
+        self._generateMriQcGroupReport = self._createTaskForCmd(
             mriqc['vmEngine'],
             mriqc['executable'],
             '''
                 {0}
                     --no-sub
-                    --nprocs 2
-                    --mem_gb 6
-                    -vv
+                    --nprocs {nproc}
+                    --mem_gb {memGb}
+                    -vvvv
                     -w "{workDir}"
                     "{datasetDir}"
                     "{outputDir}"
@@ -65,7 +80,8 @@ class Pipeline:
             # Map paths to vm volumes using argument decorators.
             datasetDir=InputDir,
             workDir=OutputDir,
-            outputDir=OutputDir
+            outputDir=OutputDir,
+            memGb=math.floor
         )
 
         # @warning 6000mb crashes on docker.
@@ -74,19 +90,19 @@ class Pipeline:
         #   https://neurostars.org/t/tips-for-getting-a-bare-metal-installation-of-fmriprep-1-4-1-working/4660/2
         # might be   --sloppy
         # TEMPLATEFLOW_HOME="{templateflowDataDir}"
-        self.preprocessSMRiPrepAnatBySubject = createTaskForCmd(
+        self._preprocessSMRiPrepAnatBySubject = self._createTaskForCmd(
             smriprep['vmEngine'],
             smriprep['executable'],
             '''
                 {0}
                     --participant-label "{subjectId}"
                     --notrack
-                    --fs-no-reconall
                     --output-spaces
                         MNI152NLin6Asym MNI152NLin2009cAsym OASIS30ANTs
-                    --nprocs 2
-                    --mem-gb 8
-                    -vv
+                    --nprocs {nproc}
+                    --mem-gb {memGb}
+                    --fs-no-reconall
+                    -vvvv
                     --fs-license "{freesurferLicenseFile}"
                     -w "{workDir}"
                     "{datasetDir}"
@@ -98,10 +114,11 @@ class Pipeline:
             workDir=OutputDir,
             outputDir=OutputDir,
             templateflowDataDir=InputDir,
-            freesurferLicenseFile=InputFile
+            freesurferLicenseFile=InputFile,
+            memGb=math.floor
         )
 
-        self.generateFMRiPrepSessionFilter = createTaskForCmd(
+        self._generateFMRiPrepSessionFilter = self._createTaskForCmd(
             printf['vmEngine'],
             printf['executable'],
             '''
@@ -128,20 +145,22 @@ class Pipeline:
             # Map paths to vm volumes using argument decorators.
             bidsFilterFile=OutputFile
         )
-# --output-spaces MNI152NLin6Asym MNI152NLin2009cAsym OASIS30ANTs
-        self.preprocessFMRiPrepFuncBySession = createTaskForCmd(
+        # --output-spaces MNI152NLin6Asym MNI152NLin2009cAsym OASIS30ANTs
+        #                TEMPLATEFLOW_HOME="{templateflowDataDir}"
+        self._preprocessFMRiPrepFuncBySession = self._createTaskForCmd(
             fmriprep['vmEngine'],
             fmriprep['executable'],
             '''
-                TEMPLATEFLOW_HOME="{templateflowDataDir}"
                 {0}
                     --notrack
                     --skip-bids-validation
-                    --fs-no-reconall
+                    --output-spaces
+                        MNI152NLin2009cAsym
                     --ignore slicetiming
-                    --nprocs 2
-                    --mem-mb 8000
-                    -vv
+                    --nprocs {nproc}
+                    --mem-mb {memMb}
+                    -vvvv
+                    --fs-no-reconall
                     --fs-license "{freesurferLicenseFile}"
                     --anat-derivatives "{anatsDerivativesDir}"
                     -w "{workDir}"
@@ -158,5 +177,12 @@ class Pipeline:
             outputDir=OutputDir,
             templateflowDataDir=InputDir,
             freesurferLicenseFile=InputFile,
-            bidsFilterFile=InputFile
+            bidsFilterFile=InputFile,
+            memMb=math.floor
         )
+
+    def _createTaskForCmd(self, vmType: VMEngine, executable: str,
+                          cmdTemplate: str, **argsDecorators: Dict[str, MyPath]):
+        return createTaskForCmd(vmType, executable, cmdTemplate,
+            **argsDecorators)
+

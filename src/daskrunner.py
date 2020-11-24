@@ -17,8 +17,10 @@ class DaskRunner(Runner):
         def blockingTaskFn(*args, **kwargs):
             delayedTaskFn = dask.delayed(taskFn)
             delayedResult = delayedTaskFn(*args, **kwargs)
-            returnValues = client.compute(delayedResult)
-            return returnValues
+            future = client.compute(delayedResult, resources={'job': 1})
+            commandResult = future.result()
+            print(commandResult)
+            return commandResult
 
         # Run task.
         return super().runTask(taskName, blockingTaskFn, *args, **kwargs)
@@ -49,14 +51,14 @@ class DaskRunner(Runner):
                 delayedResults[itemId] = didSucceedDelayed
 
         # Compute batch.
-        computations = client.compute(delayedResults)
+        computations = client.compute(delayedResults, resources={'job': 1})
         results = computations.result()
 
         # Generate a list of successful itemIds.
         successfulItemIds = [
             itemId
-            for itemId, returnValues in results.items()
-            if returnValues[0] == True  # noqa: E712
+            for itemId, commandResult in results.items()
+            if commandResult.didSucceed  # noqa: E712
         ]
 
         # Generate a list of unsuccessful itemIds.
@@ -65,9 +67,10 @@ class DaskRunner(Runner):
         ]
 
         # Update cache.
-        for itemId, returnValues in results.items():
+        for itemId, commandResult in results.items():
             taskItemName = f'{taskName}_{str(itemId)}'
-            didSucceed, returnCode = returnValues
+            didSucceed = commandResult.didSucceed
+            returnCode = commandResult.returnCode
             cache.writeTaskCache(taskItemName, didSucceed, returnCode)
 
         print(f'Batch {taskName} {str(successfulItemIds)} succeeded.')

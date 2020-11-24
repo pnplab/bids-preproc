@@ -4,6 +4,8 @@ from typing import Dict
 from enum import Enum
 import sarge
 import time  # for sleep to avoid infinite loop while fetching run log
+import os  # for os.path.expandvars (no pathlib equivalent cf. https://bugs.python.org/issue21301)
+from dataclasses import dataclass
 
 
 class VMEngine(Enum):
@@ -34,6 +36,11 @@ class MyPath():
 
 class InputFile(MyPath):
     def __init__(self, path: str) -> None:
+        # Expand environment variables within context (eg. $SLURM_TMPDIR within
+        # hcp compute node).
+        path = os.path.expandvars(path)
+
+        # Process path using pathlib.
         path = Path(path)
 
         # Do checkup.
@@ -52,6 +59,11 @@ class InputFile(MyPath):
 
 class InputDir(MyPath):
     def __init__(self, path: str) -> None:
+        # Expand environment variables within context (eg. $SLURM_TMPDIR within
+        # hcp compute node).
+        path = os.path.expandvars(path)
+
+        # Process path using pathlib.
         path = Path(path)
 
         # Do checkup.
@@ -70,6 +82,11 @@ class InputDir(MyPath):
 
 class OutputFile(MyPath):
     def __init__(self, path: str) -> None:
+        # Expand environment variables within context (eg. $SLURM_TMPDIR within
+        # hcp compute node).
+        path = os.path.expandvars(path)
+
+        # Process path using pathlib.
         path = Path(path)
 
         # Convert to abs path + resolve symlinks.
@@ -90,6 +107,11 @@ class OutputFile(MyPath):
 
 class OutputDir(MyPath):
     def __init__(self, path: str) -> None:
+        # Expand environment variables within context (eg. $SLURM_TMPDIR within
+        # hcp compute node).
+        path = os.path.expandvars(path)
+
+        # Process path using pathlib.
         path = Path(path)
 
         # Convert to abs path + resolve symlinks.
@@ -108,40 +130,69 @@ class OutputDir(MyPath):
         super().__init__(path)
 
 
+@dataclass
+class CommandResult:
+    didSucceed: bool
+    returnCode: int
+    stdout: str
+    stderr: str
+
+
+# def run(command: str) -> bool:
+#     # Launch command and capture stdout/stderr stream.
+#     stream = sarge.Capture()
+#     result = sarge.run(command, async_=True, stdout=stream, stderr=stream,
+#                        shell=True)
+
+#     # Wait for result object to be fully instantiated (especially
+#     # returncode property, due to async_ property which creates
+#     # it in another thread).
+#     result.commands[0].poll()
+
+#     # Loop until command has finished
+#     while (result.returncode is None):
+#         # Write received stdout/stderr output from stream.
+#         while True:
+#             line = stream.readline(timeout=1)
+#             if not line:
+#                 break
+#             print('> ' + line.decode('utf-8'), end='')
+
+#         # Delay next iteration in order to avoid 100% CPU usage due to
+#         # infinite loop.
+#         time.sleep(0.05)
+
+#         # Update returncode.
+#         result.commands[0].poll()
+
+#     # Wait for app end (optional since we loop on returncode existance).
+#     result.wait()
+#     # print('return code: %s' % result.returncode)
+
+#     # Close output stream.
+#     stream.close()
+
+#     didSucceed = True if result.returncode == 0 else False
+#     return CommandResult(
+#         didSucceed=didSucceed,
+#         returnCode=result.returncode,
+#         stdout=None, # stdout=result.stdout.text,
+#         stderr=None  # result.stderr.text
+#     )
+
+# Deadlock safe hopefully, stream disabled.
 def run(command: str) -> bool:
     # Launch command and capture stdout/stderr stream.
     stream = sarge.Capture()
-    result = sarge.run(command, async_=True, stdout=stream, stderr=stream,
-                       shell=True)
-
-    # Wait for result object to be fully instantiated (especially
-    # returncode property, due to async_ property which creates
-    # it in another thread).
-    result.commands[0].poll()
-
-    # Loop until command has finished
-    while (result.returncode is None):
-        # Write received stdout/stderr output from stream.
-        while (line := stream.readline(timeout=1)):
-            print('> ' + line.decode('utf-8'), end='')
-
-        # Delay next iteration in order to avoid 100% CPU usage due to
-        # infinite loop.
-        time.sleep(0.05)
-
-        # Update returncode.
-        result.commands[0].poll()
-
-    # Wait for app end (optional since we loop on returncode existance).
-    result.wait()
-    # print('return code: %s' % result.returncode)
-
-    # Close output stream.
-    stream.close()
+    result = sarge.run(command, async_=False, shell=True)
 
     didSucceed = True if result.returncode == 0 else False
-    return didSucceed, result.returncode, result.stdout.text, \
-        result.stderr.text
+    return CommandResult(
+        didSucceed=didSucceed,
+        returnCode=result.returncode,
+        stdout=None, # stdout=result.stdout.text,
+        stderr=None  # result.stderr.text
+    )
 
 
 def _mapPathsToVolumesInArgs(*args, **kargs):
@@ -199,10 +250,10 @@ def _mapPathsToVolumesInArgs(*args, **kargs):
 def dockerize(cmd: str, image: str, *args, **kargs) -> str:
     inputVolumes, outputVolumes, newKargs = _mapPathsToVolumesInArgs(*args,
                                                                      **kargs)
+
     parsedCmd = cmd.format(
-        # -m 6G
         oneliner(f'''
-            docker run -ti --rm
+            docker run --rm
                 {' '.join([
                     f'-v "{mountDir}:{originalDir}:ro"'
                     for originalDir, mountDir in inputVolumes.items()
@@ -211,8 +262,6 @@ def dockerize(cmd: str, image: str, *args, **kargs) -> str:
                     f'-v "{mountDir}:{originalDir}"'
                     for originalDir, mountDir in outputVolumes.items()
                 ])}
-                --cpus 2.0
-                -m 8G
                 {image}
         '''),
         **newKargs
@@ -223,10 +272,18 @@ def dockerize(cmd: str, image: str, *args, **kargs) -> str:
 def singularize(cmd: str, imagePath: str, *args, **kargs) -> str:
     inputVolumes, outputVolumes, newKargs = _mapPathsToVolumesInArgs(*args,
                                                                      **kargs)
+    # @todo cleanup once smriprep is fixed!
+    if 'fasttrackFixDir' in kargs:
+        inputVolumes['/usr/local/miniconda/lib/python3.7/site-packages/smriprep/smriprep/utils'] = kargs['fasttrackFixDir']
+    
     parsedCmd = cmd.format(
+        # @todo `module load singularity` out !
+        # Inject this as '$0' (the command name).
+        # @note singuluarity `--no-home` removed since:
+        #     cf. https://github.com/poldracklab/mriqc/issues/853
+        #     cf. https://github.com/nipreps/fmriprep/pull/1830
         oneliner(f'''
             singularity run
-                --no-home
                 --cleanenv
                 {' '.join([
                     f'-B "{mountDir}:{originalDir}:ro"'
@@ -238,11 +295,14 @@ def singularize(cmd: str, imagePath: str, *args, **kargs) -> str:
                 ])}
                 "{imagePath}"
         '''),
+        # Inject other args.
         **newKargs
     )
     return parsedCmd
 
 
+# @warning set -o pipefail is only compatible with bash, not
+# dash (debian).
 def logify(cmd, logPath):
     return f'''(set -o pipefail && {cmd} 2>&1 | tee "{logPath}")'''
 
@@ -251,6 +311,14 @@ def logify(cmd, logPath):
 def oneliner(cmd):
     return cmd.replace('\n', ' ').replace('    ', '')
 
+
+# @warning output cannot be merged into a single.
+def bashify(cmd):
+    # we need heredoc syntax in order to allow inner cmd quotes without
+    # extra escaping.
+    return ('bash <<__BASH_CMD_END__' '\n'
+            f'{cmd}' '\n'
+            '__BASH_CMD_END__')
 
 def createTaskForCmd(vmType: VMEngine, executable: str, cmdTemplate: str,
                      **argsDecorators: Dict[str, MyPath]):
@@ -290,20 +358,84 @@ def createTaskForCmd(vmType: VMEngine, executable: str, cmdTemplate: str,
 
         # Inject logs capture to the command.
         if 'logFile' in kargs:
-            cmd = logify(cmd, OutputFile(kargs['logFile']))
+            logFile = OutputFile(kargs['logFile']) # Create dirs, etc.
+            cmd = logify(cmd, logFile)
 
         # Merge the multiline command string as a single line, so the command
         # execution doesn't crash due to seperate, unwinllingly splitted
         # instructions.
         cmd = oneliner(cmd)
 
+        # Ensure command is executed by bash shell (not sh).
+        cmd = bashify(cmd)
+
         # Print command.
         print(f"cmd: {cmd}")
 
         # Execute command.
-        didSucceed, returnCode, stdout, stderr = run(cmd)
+        commandResult = run(cmd)
 
         # Return command results.
-        return didSucceed, returnCode
+        return commandResult
+
+    return task
+
+def createTaskForCmd(vmType: VMEngine, executable: str, cmdTemplate: str,
+                     **argsDecorators: Dict[str, MyPath]):
+    # Create task.
+    def task(*args, **kargs):
+        # Decorate command args (ie. path type placeholders, which can be used
+        # by vm tool wrapper to setup the vm volumes, and performs path
+        # checking and directory creation).
+        newKargs = {}
+        for arg, val in itertools.chain(enumerate(args), kargs.items()):
+            if arg in argsDecorators:
+                wrapper = argsDecorators[arg]
+                val = wrapper(val)
+            newKargs[arg] = val
+
+        # Inject command args within command template, and wrap with vm tool
+        # when relevant.
+        cmd = None
+        if vmType == VMEngine.NONE:
+            cmd = str.format(
+                cmdTemplate,
+                executable,
+                **newKargs
+            )
+        elif vmType == VMEngine.DOCKER:
+            cmd = dockerize(
+                cmdTemplate,
+                executable,
+                **newKargs
+            )
+        elif vmType == VMEngine.SINGULARITY:
+            cmd = singularize(
+                cmdTemplate,
+                executable,
+                **newKargs
+            )
+
+        # Inject logs capture to the command.
+        if 'logFile' in kargs:
+            logFile = OutputFile(kargs['logFile']) # Create dirs, etc.
+            cmd = logify(cmd, logFile)
+
+        # Merge the multiline command string as a single line, so the command
+        # execution doesn't crash due to seperate, unwinllingly splitted
+        # instructions.
+        cmd = oneliner(cmd)
+
+        # Ensure command is executed by bash shell (not sh).
+        cmd = bashify(cmd)
+
+        # Print command.
+        print(f"cmd: {cmd}")
+
+        # Execute command.
+        commandResult = run(cmd)
+
+        # Return command results.
+        return commandResult
 
     return task
