@@ -14,6 +14,15 @@ class Executor(Enum):
     def __str__(self):
         return self.value
 
+class Granularity(Enum):
+    SUBJECT = 'subject'
+    SESSION = 'session'
+    DATASET = 'dataset'
+
+    # Used by argparse to provide user CLI input arg values.
+    def __str__(self):
+        return self.value
+
 
 def readCLIArgs():
     parser = argparse.ArgumentParser(
@@ -38,6 +47,14 @@ def readCLIArgs():
         required=True,
         help='virtual machine engine used to run the command.',
         dest='vmEngine'
+    )
+    parser.add_argument(
+        '--granularity',
+        type=Granularity,
+        choices=list(Granularity),
+        default=Granularity.SESSION,
+        help='fmriprep granularity.',
+        dest='granularity'
     )
     parser.add_argument( # @todo rename to scheduler instead
         '--executor',

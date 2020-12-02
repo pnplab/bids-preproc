@@ -6,7 +6,7 @@ import dask_jobqueue
 import dask_mpi
 from pipeline import Pipeline as LocalPipeline
 from distributed_pipeline import DistributedPipeline
-from cli import readCLIArgs, Executor
+from cli import readCLIArgs, Executor, Granularity
 from src.cmd_helpers import VMEngine
 from src.daskrunner import DaskRunner
 from src.runner import Runner
@@ -21,6 +21,7 @@ if __name__ == '__main__':
 
     # Retrieve args
     args = readCLIArgs()
+    granularity = args.granularity
     datasetDir = args.datasetPath
     outputDir = args.outputDir
     vmEngine = args.vmEngine
@@ -90,7 +91,7 @@ if __name__ == '__main__':
             local_directory=f'{workDir}/dask',  # @warning does it work with '$' embedded ????
             log_directory=f'{outputDir}/log/dask',  # @warning not to copied to local hd first, instead use shared file system.
             # death_timeout=120,
-            job_extra=['--tmp="240G"'],  # requires at least 200G available (~half of 480GB beluga)
+            job_extra=['--tmp="240G"' if granularity is not Granularity.SUBJECT else '--tmp="300G"'],  # requires at least 200G available (~half of 480GB beluga)
             env_extra=['module load singularity']
         )
         cluster.scale(1)  # at least one worker required in order to be able to
@@ -256,8 +257,8 @@ if __name__ == '__main__':
 
         # Limit next step's subject ids to the one that succeeded MRIQC.
         subjectIds = successfulSubjectIds
-
-    if enableSMRiPrep:
+    
+    if enableSMRiPrep and granularity is not Granularity.SUBJECT:
         # 4. SMRiPrep: anat by subjects.
         successfulSubjectIds, failedSubjectIds = runner.batchTask(
             'smriprep_anat',
@@ -285,7 +286,7 @@ if __name__ == '__main__':
         for subjectId in subjectIds
         for sessionId in dataset.getSessionIdsBySubjectId(subjectId)
     ]
-    if enableFMRiPrep:
+    if enableFMRiPrep and granularity is not Granularity.SUBJECT:
         # 5 FMRiPrep: generate sessions' func file filters.
         successfulSessionIds, failedSessionIds = runner.batchTask(
             'fmriprep_filter',
@@ -325,3 +326,23 @@ if __name__ == '__main__':
         # Limit next step's subject/session ids to the one that succeeded
         # MRIQC.
         sessionIds = successfulSessionIds
+
+    if granularity is Granularity.SUBJECT:
+        # 7. FMRiPrep: all by subjects.
+        successfulSessionIds, failedSessionIds = runner.batchTask(
+            'fmriprep_all',
+            lambda subjectId: pipeline.preprocessFMRiPrepBySubject(
+                datasetDir=datasetDir,
+                workDir=f'{workDir}/fmriprep/sub-{subjectId}',
+                outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
+                logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}.txt',
+                freesurferLicenseFile='./licenses/freesurfer.txt',
+                templateflowDataDir='./templateflow',
+                nproc=nproc,
+                memMb=memGb*1024,
+                subjectId=subjectId,
+            ),
+            subjectIds
+        )
+        if len(successfulSessionIds) == 0:
+            sys.exit(7)

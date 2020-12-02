@@ -323,3 +323,44 @@ class DistributedPipeline(Pipeline):
         self.cleanup(workDir)
 
         return result
+
+    def preprocessFMRiPrepBySubject(self, *args, **kargs):
+        # @todo add checkup.
+
+        # Decompress datasetDir on local cluster.
+        archiveDir = self._archiveDir
+        archiveName = self._archiveName
+        workDir = kargs['workDir']
+        extractedDatasetDir = f'{workDir}/dataset'
+        result = self.extractDatasetForSubjectId(archiveDir, archiveName, extractedDatasetDir, kargs['subjectId'])
+
+        # Stop here if extraction failed.
+        if not result.didSucceed:
+            self.cleanup(workDir)
+            return result
+
+        # Change (log) and output dir.
+        # outputFinalDir = kargs['outputDir']
+        outputSharedDir = f'{self._workerSharedDir}/fmriprep/sub-{kargs["subjectId"]}'
+        # outputSharedArchive = f'{self._workerSharedDir}/smriprep/sub-{kargs["subjectId"]}'
+        outputLocalDir = f'{workDir}/sub-{kargs["subjectId"]}/output'
+        # outputLocalArchive = f'{self._workerLocalDir}/smriprep/sub-{kargs["subjectId"]}'
+        kargs['outputDir'] = outputLocalDir
+
+        # Replace input datasetDir and workdir.
+        kargs['datasetDir'] = extractedDatasetDir
+
+        # Run super's task.
+        result = super().preprocessFMRiPrepBySubject(*args, **kargs)
+
+        # Transfer output back.
+        if result.didSucceed:
+            result2 = self.copyDir(outputLocalDir, outputSharedDir)
+            if not result2.didSucceed:
+                self.cleanup(workDir)
+                return result2
+        
+        # Cleanup.
+        self.cleanup(workDir)
+
+        return result

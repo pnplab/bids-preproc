@@ -5,12 +5,13 @@ from src.cmd_helpers import InputDir, InputFile, OutputDir, OutputFile, \
 
 
 class Pipeline:
-    validateBids: Callable
-    generateMriQcSubjectReport: Callable
-    generateMriQcGroupReport: Callable
-    preprocessSMRiPrepAnatBySubject: Callable
-    generateFMRiPrepSessionFilter: Callable
-    preprocessFMRiPrepFuncBySession: Callable
+    _validateBids: Callable
+    _generateMriQcSubjectReport: Callable
+    _generateMriQcGroupReport: Callable
+    _preprocessSMRiPrepAnatBySubject: Callable
+    _generateFMRiPrepSessionFilter: Callable
+    _preprocessFMRiPrepFuncBySession: Callable
+    _preprocessFMRiPrepBySubject: Callable
 
     def validateBids(self, *args, **kargs):
         return self._validateBids(*args, **kargs)
@@ -24,6 +25,8 @@ class Pipeline:
         return self._generateFMRiPrepSessionFilter(*args, **kargs)
     def preprocessFMRiPrepFuncBySession(self, *args, **kargs):
         return self._preprocessFMRiPrepFuncBySession(*args, **kargs)
+    def preprocessFMRiPrepBySubject(self, *args, **kargs):
+        return self._preprocessFMRiPrepBySubject(*args, **kargs)
 
     # @warning docker requires manual app modification.
     # https://stackoverflow.com/questions/44533319/how-to-assign-more-memory-to-docker-container/44533437#44533437
@@ -178,6 +181,34 @@ class Pipeline:
             templateflowDataDir=InputDir,
             freesurferLicenseFile=InputFile,
             bidsFilterFile=InputFile,
+            memMb=math.floor
+        )
+
+        self._preprocessFMRiPrepBySubject = self._createTaskForCmd(
+            fmriprep['vmEngine'],
+            fmriprep['executable'],
+            '''
+                {0}
+                    --notrack
+                    --skip-bids-validation
+                    --ignore slicetiming
+                    --nprocs {nproc}
+                    --mem-mb {memMb}
+                    -vvvv
+                    --fs-no-reconall
+                    --fs-license "{freesurferLicenseFile}"
+                    -w "{workDir}"
+                    "{datasetDir}"
+                    "{outputDir}"
+                    participant
+                    --participant-label "{subjectId}"
+            ''',
+            # Map paths to vm volumes using argument decorators.
+            datasetDir=InputDir,
+            workDir=OutputDir,
+            outputDir=OutputDir,
+            templateflowDataDir=InputDir,
+            freesurferLicenseFile=InputFile,
             memMb=math.floor
         )
 
