@@ -1,10 +1,10 @@
 import collections  # for sequence type unpacking in higher order functions
 from typing import Set
 import dask
-from src.runner import Runner
+from . import LocalScheduler
 
 
-class DaskRunner(Runner):
+class DaskScheduler(LocalScheduler):
     def __init__(self, historyCachePath: str, client: dask.distributed.Client):
         super().__init__(historyCachePath)
 
@@ -18,9 +18,9 @@ class DaskRunner(Runner):
             delayedTaskFn = dask.delayed(taskFn)
             delayedResult = delayedTaskFn(*args, **kwargs)
             future = client.compute(delayedResult, resources={'job': 1})
-            commandResult = future.result()
-            print(commandResult)
-            return commandResult
+            taskResult = future.result()
+            print(taskResult)
+            return taskResult
 
         # Run task.
         return super().runTask(taskName, blockingTaskFn, *args, **kwargs)
@@ -57,8 +57,8 @@ class DaskRunner(Runner):
         # Generate a list of successful itemIds.
         successfulItemIds = [
             itemId
-            for itemId, commandResult in results.items()
-            if commandResult.didSucceed  # noqa: E712
+            for itemId, taskResult in results.items()
+            if taskResult.didSucceed  # noqa: E712
         ]
 
         # Generate a list of unsuccessful itemIds.
@@ -67,10 +67,10 @@ class DaskRunner(Runner):
         ]
 
         # Update cache.
-        for itemId, commandResult in results.items():
+        for itemId, taskResult in results.items():
             taskItemName = f'{taskName}_{str(itemId)}'
-            didSucceed = commandResult.didSucceed
-            returnCode = commandResult.returnCode
+            didSucceed = taskResult.didSucceed
+            returnCode = taskResult.returnCode
             cache.writeTaskCache(taskItemName, didSucceed, returnCode)
 
         print(f'Batch {taskName} {str(successfulItemIds)} succeeded.')

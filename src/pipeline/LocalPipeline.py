@@ -1,7 +1,9 @@
 from typing import Callable, Dict
 import math
-from src.cmd_helpers import InputDir, InputFile, OutputDir, OutputFile, \
-    createTaskForCmd, MyPath, VMEngine
+from ..cli import VMEngine
+from ..path import PathPlaceHolder, InputFile, InputDir, OutputFile, \
+                     OutputDir
+from ..executor import TaskFactory
 
 
 class Pipeline:
@@ -28,12 +30,13 @@ class Pipeline:
     def preprocessFMRiPrepBySubject(self, *args, **kargs):
         return self._preprocessFMRiPrepBySubject(*args, **kargs)
 
+    # def __init__(self, vmEngine: VMEngine, availableExecutables) -> None:
+
     # @warning docker requires manual app modification.
     # https://stackoverflow.com/questions/44533319/how-to-assign-more-memory-to-docker-container/44533437#44533437
     def __init__(self, bidsValidator: Dict[str, str], mriqc: Dict[str, str],
                  smriprep: Dict[str, str], fmriprep: Dict[str, str],
                  printf: Dict[str, str]) -> None:
-        
         self._validateBids = self._createTaskForCmd(
             bidsValidator['vmEngine'],
             bidsValidator['executable'],
@@ -213,7 +216,7 @@ class Pipeline:
         )
 
     def _createTaskForCmd(self, vmType: VMEngine, executable: str,
-                          cmdTemplate: str, **argsDecorators: Dict[str, MyPath]):
-        return createTaskForCmd(vmType, executable, cmdTemplate,
+                          cmdTemplate: str, **argsDecorators: Dict[str, PathPlaceHolder]):
+        return TaskFactory.generate(vmType, executable, cmdTemplate,
             **argsDecorators)
 

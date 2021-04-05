@@ -1,10 +1,11 @@
 from typing import Callable, Dict
 import math
-from src.cmd_helpers import InputDir, InputFile, OutputDir, OutputFile, VMEngine, \
-    createTaskForCmd, run, MyPath, VMEngine, CommandResult
-
+from cli import VMEngine
+from src.path import PathPlaceHolder, InputFile, InputDir, OutputFile, \
+                    OutputDir
+from src.executor import TaskFactory, execute, TaskResult
+from src.dataset import DistributedDataset
 from pipeline import Pipeline
-from src.distributed_dataset import DistributedDataset
 
 class DistributedPipeline(Pipeline):
     _archiveDir: str
@@ -33,17 +34,18 @@ class DistributedPipeline(Pipeline):
     # hard drive when singularity is used and option activated.
     def _createTaskForCmd(self, vmType: VMEngine, executable: str,
                           cmdTemplate: str,
-                          **argsDecorators: Dict[str, MyPath]):
+                          **argsDecorators: Dict[str, PathPlaceHolder]):
         # Replace singularity executable path to local hd, one. New executable
         # is to be copied within overloaded task method later one.
         executableOrigin = None
-        isExecutableCopiedLocally = self._enableSingularityContainerLocalCopy and vmType == VMEngine.SINGULARITY
+        isExecutableCopiedLocally = self._enableSingularityContainerLocalCopy \
+                                    and vmType == VMEngine.SINGULARITY
         if isExecutableCopiedLocally:
             executableOrigin = executable
             executable = f'{self._workerLocalDir}/executable.simg'
 
         # Generate task.
-        task = createTaskForCmd(vmType, executable, cmdTemplate,
+        task = TaskFactory.generate(vmType, executable, cmdTemplate,
             **argsDecorators)
 
         # Wrap task with copy of executable to local host + cleanup.
@@ -82,7 +84,7 @@ class DistributedPipeline(Pipeline):
         cmd = f'dar -R "{inputDir}" -v -s 1024M -w -c "{outputFile}"'
         # @todo log..
 
-        return run(cmd)
+        return execute_strcmd(cmd)
 
     def archiveDataset(self, datasetDir):
         datasetDir = InputDir(datasetDir)
@@ -93,7 +95,7 @@ class DistributedPipeline(Pipeline):
 
         # @todo log..
 
-        return run(cmd)
+        return execute_strcmd(cmd)
 
     def prefetchDatasetInfo(self):
         # Decompress datasetDir on local cluster.
@@ -121,21 +123,21 @@ class DistributedPipeline(Pipeline):
         outputDir = OutputDir(outputDir)
         
         cmd = f'dar -R "{outputDir}" -O -w -x "{archiveDir}/{archiveName}" -v -am'
-        return run(cmd)
+        return execute_strcmd(cmd)
 
     def extractDatasetForSubjectId(self, archiveDir, archiveName, outputDir, subjectId):
         archiveDir = InputDir(archiveDir)
         outputDir = OutputDir(outputDir)
 
         cmd = f'dar -R "{outputDir}" -O -w -x "{archiveDir}/{archiveName}" -v -am -P "sub-*" -g "sub-{subjectId}"'
-        return run(cmd)
+        return execute_strcmd(cmd)
 
     def cleanup(self, dir):
         dir = InputDir(dir)
         # @todo cleanup! We do not at the moment to make debugging easier
         # cmd = f'rm -rf "{dir}"'
-        # return run(cmd)
-        return CommandResult(
+        # return execute_strcmd(cmd)
+        return TaskResult(
             didSucceed=True,
             returnCode=0,
             stdout=None, # result.stdout.text,
@@ -146,13 +148,13 @@ class DistributedPipeline(Pipeline):
         sourceDir = InputDir(sourceDir)
         destDir = OutputDir(destDir)
         cmd = f'rsync -avz --no-g --no-p {sourceDir} {destDir}'
-        return run(cmd)
+        return execute_strcmd(cmd)
 
     def copyFile(self, sourceFile, destFile):
         sourceFile = InputFile(sourceFile)
         destFile = OutputFile(destFile)
         cmd = f'rsync -avz --no-g --no-p {sourceFile} {destFile}'
-        return run(cmd)
+        return execute_strcmd(cmd)
 
     def validateBids(self, *args, **kargs):
         # @todo add checkup.

@@ -2,7 +2,15 @@ import argparse
 import psutil
 import sys
 from enum import Enum
-from src.cmd_helpers import VMEngine
+
+class VMEngine(Enum):
+    NONE = 'none'
+    DOCKER = 'docker'
+    SINGULARITY = 'singularity'
+
+    # Used by argparse to provide user CLI input arg values.
+    def __str__(self):
+        return self.value
 
 class Executor(Enum):
     NONE = 'none'

@@ -1,16 +1,15 @@
+from src.executor.TaskFactory import TaskFactory
 import sys  # for python version check + sys.exit
 import os  # for cache file delete
 import shutil  # for cache dir delete
 import dask.distributed  # for MT
 import dask_jobqueue
 import dask_mpi
-from pipeline import Pipeline as LocalPipeline
-from distributed_pipeline import DistributedPipeline
-from cli import readCLIArgs, Executor, Granularity
-from src.cmd_helpers import VMEngine
-from src.daskrunner import DaskRunner
-from src.runner import Runner
-from src.dataset import Dataset
+from .config import availableExecutables
+from .src.pipeline import LocalPipeline, DistributedPipeline
+from .src.cli import readCLIArgs, Executor, Granularity, VMEngine
+from .src.scheduler import LocalScheduler, DaskScheduler
+from .src.dataset import LocalDataset
 
 # Run the pipeline.
 if __name__ == '__main__':
@@ -49,16 +48,16 @@ if __name__ == '__main__':
         shutil.rmtree(f'./{outputDir}', ignore_errors=True)
 
     # Setup task executor.
-    runner = None
+    scheduler = None
     client = None
     cluster = None
     if executor == Executor.NONE:
-        runner = Runner(f'{outputDir}/.task_cache.csv')
+        scheduler = LocalScheduler(f'{outputDir}/.task_cache.csv')
     elif executor == Executor.LOCAL:
         cluster = dask.distributed.LocalCluster()
         cluster.scale(1)  # Only one worker if local, fmriprep etc. should use multiple cpus!
         client = dask.distributed.Client(cluster)
-        runner = DaskRunner(f'{outputDir}/.task_cache.csv', client)
+        scheduler = DaskScheduler(f'{outputDir}/.task_cache.csv', client)
     elif executor == Executor.SLURM:
         cluster = dask_jobqueue.SLURMCluster(
             # @warning
@@ -91,47 +90,21 @@ if __name__ == '__main__':
             local_directory=f'{workDir}/dask',  # @warning does it work with '$' embedded ????
             log_directory=f'{outputDir}/log/dask',  # @warning not to copied to local hd first, instead use shared file system.
             # death_timeout=120,
-            job_extra=['--tmp="240G"' if granularity is not Granularity.SUBJECT else '--tmp="300G"'],  # requires at least 200G available (~half of 480GB beluga)
+            job_extra=['--tmp="240G"' if granularity is Granularity.SESSION else '--tmp="300G"'],  # requires at least 200G available (~half of 480GB beluga)
             env_extra=['module load singularity']
         )
         cluster.scale(1)  # at least one worker required in order to be able to
                           # fetch dataset information.
         client = dask.distributed.Client(cluster)
-        runner = DaskRunner(f'{outputDir}/.task_cache.csv', client)
+        scheduler = DaskScheduler(f'{outputDir}/.task_cache.csv', client)
     elif executor == Executor.MPI:
         dask_mpi.initialize()
         client = dask.distributed.Client()
-        runner = DaskRunner(f'{outputDir}/.task_cache.csv', client)
+        scheduler = DaskScheduler(f'{outputDir}/.task_cache.csv', client)
     print(client)
 
-    # Setup pipeline tasks.
-    availableExecutables = {
-        'bidsValidator': {
-            VMEngine.NONE: 'bids-validator',
-            VMEngine.SINGULARITY: '../singularity-images/bids-validator-1.5.2.simg', # @todo
-            VMEngine.DOCKER: 'bids/validator:v1.5.6'
-        },
-        'mriqc': {
-            VMEngine.NONE: 'mriqc',
-            VMEngine.SINGULARITY: '../singularity-images/mriqc-0.15.2.simg',
-            VMEngine.DOCKER: 'poldracklab/mriqc:0.15.2'
-        },
-        'smriprep': {
-            VMEngine.NONE: 'smriprep',
-            VMEngine.SINGULARITY: '../singularity-images/smriprep-0.7.0.simg', # @todo
-            VMEngine.DOCKER: 'nipreps/smriprep:0.7.0'
-        },
-        'fmriprep': {
-            VMEngine.NONE: 'fmriprep',
-            VMEngine.SINGULARITY: '../singularity-images/fmriprep-20.2.0.simg', # @todo
-            VMEngine.DOCKER: 'nipreps/fmriprep:20.2.0'
-        },
-        # Used to generate fmriprep bids file selection filter for session
-        # level granularity.
-        'printf': {
-            VMEngine.NONE: 'printf'
-        }
-    }
+    # Generate executable config.
+    # validateBids = TaskFactory.generate(vmEngine, BIDS_VALIDATOR[vmEngine], BIDS_VALIDATOR['cmd'], BIDS_VALIDATOR['decorators'])
     executables = {
         'bidsValidator': {
             'vmEngine': vmEngine,
@@ -156,14 +129,15 @@ if __name__ == '__main__':
         }
     }
 
+    # Generate pipeline.
     pipeline = None
     if not isPipelineDistributed:
-        pipeline = LocalPipeline(
-            **executables
-        )
+        pipeline = LocalPipeline(vmEngine, availableExecutables)
     # Override pipeline file management in order to optimize for distributed
     # file systems.
     elif isPipelineDistributed:
+
+        ## @TODO !!!!!!!!
         pipeline = DistributedPipeline(
             **executables,
             archiveDir=f'{outputDir}/archives/',
@@ -176,7 +150,7 @@ if __name__ == '__main__':
     if isPipelineDistributed:
         # 0. Archive dataset for faster IO when pipeline is distributed.
         # @todo remove dual archiveName/Dir with pipeline
-        didSucceed = runner.runTask(
+        didSucceed = scheduler.runTask(
             'archive_dataset',
             lambda: pipeline.archiveDataset(
                 datasetDir=datasetDir,
@@ -189,7 +163,7 @@ if __name__ == '__main__':
     # Retrieve dataset info.
     dataset = None
     if not isPipelineDistributed:
-        dataset = Dataset(datasetDir, f'{outputDir}/.bids_cache')
+        dataset = LocalDataset(datasetDir, f'{outputDir}/.bids_cache')
     # Wrap inside distributed pipeline, in order to prevent issues due to
     # distributed file system (missing subject ids, etc).
     elif isPipelineDistributed:
@@ -211,7 +185,7 @@ if __name__ == '__main__':
 
     if enableBidsValidator:
         # 1. BidsValidator.
-        didSucceed = runner.runTask(
+        didSucceed = scheduler.runTask(
             'validate_bids',
             lambda: pipeline.validateBids(
                 datasetDir=datasetDir,
@@ -224,7 +198,7 @@ if __name__ == '__main__':
     subjectIds = dataset.getSubjectIds()
     if enableMRIQC:
         # 2. MRIQC: qc by subjects.
-        successfulSubjectIds, failedSubjectIds = runner.batchTask(
+        successfulSubjectIds, failedSubjectIds = scheduler.batchTask(
             'mriqc_subj',
             lambda subjectId: pipeline.generateMriQcSubjectReport(
                 datasetDir=datasetDir,
@@ -241,7 +215,7 @@ if __name__ == '__main__':
             sys.exit(2)
 
         # 3. MRIQC: group qc.
-        didSucceed = runner.runTask(
+        didSucceed = scheduler.runTask(
             'mriqc_group',
             lambda: pipeline.generateMriQcGroupReport(
                 datasetDir=datasetDir,
@@ -258,9 +232,9 @@ if __name__ == '__main__':
         # Limit next step's subject ids to the one that succeeded MRIQC.
         subjectIds = successfulSubjectIds
     
-    if enableSMRiPrep and granularity is not Granularity.SUBJECT:
+    if enableSMRiPrep and granularity is Granularity.SESSION:
         # 4. SMRiPrep: anat by subjects.
-        successfulSubjectIds, failedSubjectIds = runner.batchTask(
+        successfulSubjectIds, failedSubjectIds = scheduler.batchTask(
             'smriprep_anat',
             lambda subjectId: pipeline.preprocessSMRiPrepAnatBySubject(
                 datasetDir=datasetDir,
@@ -286,9 +260,9 @@ if __name__ == '__main__':
         for subjectId in subjectIds
         for sessionId in dataset.getSessionIdsBySubjectId(subjectId)
     ]
-    if enableFMRiPrep and granularity is not Granularity.SUBJECT:
+    if enableFMRiPrep and granularity is Granularity.SESSION:
         # 5 FMRiPrep: generate sessions' func file filters.
-        successfulSessionIds, failedSessionIds = runner.batchTask(
+        successfulSessionIds, failedSessionIds = scheduler.batchTask(
             'fmriprep_filter',
             lambda subjectId, sessionId: pipeline.generateFMRiPrepSessionFilter(
                 logFile=f'{outputDir}/log/fmriprep/filters/sub-{subjectId}.txt',
@@ -301,7 +275,7 @@ if __name__ == '__main__':
             sys.exit(5)
 
         # 6. FMRiPrep: func by subjects.
-        successfulSessionIds, failedSessionIds = runner.batchTask(
+        successfulSessionIds, failedSessionIds = scheduler.batchTask(
             'fmriprep_func',
             lambda subjectId, sessionId: pipeline.preprocessFMRiPrepFuncBySession(
                 datasetDir=datasetDir,
@@ -327,9 +301,9 @@ if __name__ == '__main__':
         # MRIQC.
         sessionIds = successfulSessionIds
 
-    if granularity is Granularity.SUBJECT:
+    if granularity is Granularity.DATASET or granularity is Granularity.SUBJECT:
         # 7. FMRiPrep: all by subjects.
-        successfulSessionIds, failedSessionIds = runner.batchTask(
+        successfulSessionIds, failedSessionIds = scheduler.batchTask(
             'fmriprep_all',
             lambda subjectId: pipeline.preprocessFMRiPrepBySubject(
                 datasetDir=datasetDir,

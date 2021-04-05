@@ -4,7 +4,7 @@ from typing import List
 
 
 # @warning not safe for parallel write.
-class TaskHistory:
+class TasksHistory:
     _cachePath: str
     _cache: pandas.DataFrame
     _columnNames: List[str]

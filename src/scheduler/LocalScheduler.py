@@ -1,53 +1,13 @@
 import collections  # for sequence type unpacking in higher order functions
 # import sarge
 # import time  # for sleep to avoid infinite loop while fetching run log
-from src.task_history import TaskHistory
+from src.tasks_history import TasksHistory
 from typing import Set
 
 
-# def run(command: str, oneliner: bool = True) -> bool:
-#     # Strip command from newlines / tabs.
-#     if oneliner:
-#         command = command.replace('\n', ' ').replace('    ', '')
-
-#     # Launch command and capture stdout/stderr stream.
-#     stream = sarge.Capture()
-#     result = sarge.run(command, async_=True, stdout=stream, stderr=stream,
-#                        shell=True)
-
-#     # Wait for result object to be fully instantiated (especially
-#     # returncode property, due to async_ property which creates
-#     # it in another thread).
-#     result.commands[0].poll()
-
-#     # Loop until command has finished
-#     while (result.returncode is None):
-#         # Write received stdout/stderr output from stream.
-#         while (line := stream.readline(timeout=1)):
-#             print('> ' + line.decode('utf-8'), end='')
-
-#         # Delay next iteration in order to avoid 100% CPU usage due to
-#         # infinite loop.
-#         time.sleep(0.05)
-
-#         # Update returncode.
-#         result.commands[0].poll()
-
-#     # Wait for app end (optional since we loop on returncode existance).
-#     result.wait()
-#     # print('return code: %s' % result.returncode)
-
-#     # Close output stream.
-#     stream.close()
-
-#     didSucceed = True if result.returncode == 0 else False
-#     return didSucceed, result.returncode, result.stdout.text, \
-#         result.stderr.text
-
-
-class Runner:
+class LocalScheduler:
     def __init__(self, historyCachePath: str):
-        self._history = TaskHistory(historyCachePath)
+        self._history = TasksHistory(historyCachePath)
 
     def runTask(self, taskName: str, taskFn, *args, **kwargs) -> bool:
         cache = self._history
@@ -63,9 +23,9 @@ class Runner:
             print(f'Task {taskName} starting.')
 
             # Run task.
-            commandResult = taskFn(*args, **kwargs)
-            didSucceed = commandResult.didSucceed
-            returnCode = commandResult.returnCode
+            taskResult = taskFn(*args, **kwargs)
+            didSucceed = taskResult.didSucceed
+            returnCode = taskResult.returnCode
 
             # Record result.
             cache.writeTaskCache(taskName, didSucceed, returnCode)
