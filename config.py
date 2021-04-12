@@ -5,6 +5,53 @@ from src.cli import VMEngine
 from src.path import PathPlaceHolder, InputFile, InputDir, OutputFile, \
                      OutputDir
 
+# This task is mostly used to copy singularity executable on compute node.
+# @warning
+# This won't work with dir in singularity/docker, as VM engine will be
+# configured to map file, not dir (cf. decorators).
+COPY_FILE = TaskConfig(
+    raw_executable='rsync',
+    singularity_image=None,
+    docker_image=None,
+    cmd='''
+        {0}
+            -avz --no-g --no-p
+            "{sourcePath}"
+            "{destPath}"
+    ''',
+    decorators={
+        "sourcePath": InputFile,
+        "destPath": OutputFile
+    }
+)
+
+REMOVE_DIR = TaskConfig(
+    raw_executable='rm',
+    singularity_image=None,
+    docker_image=None,
+    cmd='''
+        {0}
+            -r
+            "{dirPath}"
+    ''',
+    decorators={
+        "dirPath": InputDir
+    }
+)
+
+REMOVE_FILE = TaskConfig(
+    raw_executable='rm',
+    singularity_image=None,
+    docker_image=None,
+    cmd='''
+        {0}
+            "{filePath}"
+    ''',
+    decorators={
+        "filePath": InputFile
+    }
+)
+
 ARCHIVE_DATASET = TaskConfig(
     raw_executable='dar',
     singularity_image=None,  # @TODO !!! map to NONE
@@ -100,26 +147,6 @@ LIST_ARCHIVE_SESSIONS = TaskConfig(
     decorators={
         "datasetDir": InputDir,
         # @note archive name is just a prefix, thus not an OutputFile.
-    }
-)
-
-# This task is mostly used to copy singularity executable on compute node.
-# @warning
-# This won't work with dir in singularity/docker, as VM engine will be
-# configured to map file, not dir (cf. decorators).
-COPY_FILE = TaskConfig(
-    raw_executable='rsync',
-    singularity_image=None,
-    docker_image=None,
-    cmd='''
-        {0}
-            -avz --no-g --no-p
-            "{sourceFilePath}"
-            "{destFilePath}"
-    ''',
-    decorators={
-        "sourceFilePath": InputFile,
-        "destFilePath": OutputFile
     }
 )
 

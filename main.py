@@ -5,7 +5,7 @@ import dask.distributed  # for MT
 import dask_jobqueue
 import dask_mpi
 from typing import Set
-from config import COPY_FILE, \
+from config import REMOVE_FILE, REMOVE_DIR, COPY_FILE, \
                    ARCHIVE_DATASET, EXTRACT_DATASET, EXTRACT_DATASET_SUBJECT, \
                    EXTRACT_DATASET_SESSION, \
                    LIST_ARCHIVE_SESSIONS, BIDS_VALIDATOR, MRIQC_SUBJECT, \
@@ -140,6 +140,8 @@ if __name__ == '__main__':
     print(client)
 
     # Generate tasks.
+    remove_file = TaskFactory.generate(VMEngine.NONE, REMOVE_FILE)
+    remove_dir = TaskFactory.generate(VMEngine.NONE, REMOVE_DIR)
     copy_file = TaskFactory.generate(VMEngine.NONE, COPY_FILE)
     archive_dataset = TaskFactory.generate(VMEngine.NONE, ARCHIVE_DATASET)  # distributed only / no singularity/docker image available.
     extract_dataset = TaskFactory.generate(VMEngine.NONE, EXTRACT_DATASET)  # distributed only / no singularity/docker image available.
@@ -170,7 +172,8 @@ if __name__ == '__main__':
                 archiveDir=archiveDir,
                 archiveName=archiveName,
                 logFile=f'{outputDir}/log/archive-dataset.txt'
-            )
+            ),
+            lambda: None
         )
         if not didSucceed:
             sys.exit(-1)
@@ -219,20 +222,21 @@ if __name__ == '__main__':
     if not isPipelineDistributed:
         def fetch_dataset1(subjectId: str = None, sessionIds: Set[str] = None):
             return datasetDir
-        def cleanup(subjectId: str = None, sessionIds: Set[str] = None):
+        def cleanup1(subjectId: str = None, sessionIds: Set[str] = None):
+            # Nothing to cleanup.
             pass
         
         fetch_dataset = fetch_dataset1
-        fetch_dataset.cleanup = cleanup
+        fetch_dataset.cleanup = cleanup1
     else:
         def fetch_dataset2(subjectId: str = None, sessionIds: Set[str] = None):
             archiveDir=f'{outputDir}/archives/'
             archiveName=os.path.basename(datasetDir)
-            localOutputDir=None  # tbd
+            localOutputDir=None  # conditionally defined.
 
             # Arg check / Edge case.
             if subjectId is None and sessionIds is not None:
-                err = 'dataset session extraction requires subject id'
+                err = 'dataset session extraction requires subject id.'
                 raise Exception(err)
             # Extract the whole dataset if subject is not defined.
             elif subjectId is None:
@@ -259,7 +263,22 @@ if __name__ == '__main__':
             return localOutputDir
 
         def cleanup2(subjectId: str = None, sessionIds: Set[str] = None):
-            # @TODO
+            # Arg check / Edge case.
+            if subjectId is None and sessionIds is not None:
+                err = 'dataset session cleanup requires subject id.'
+                raise Exception(err)
+            # Cleanup the whole dataset if subject is not defined.
+            elif subjectId is None:
+                localOutputDir = f'{workerLocalDir}/dataset'
+                remove_dir(dirPath=localOutputDir)
+            # Cleanup by subject if session is not defined.
+            elif sessionIds is None:
+                localOutputDir = f'{workerLocalDir}/dataset-{subjectId}'
+                remove_dir(dirPath=localOutputDir)
+            # Cleanup by session if both subject and session are defined.
+            else:
+                localOutputDir = f'{workerLocalDir}/dataset-{subjectId}-{".".join(sessionIds)}'
+                remove_dir(dirPath=localOutputDir)
             pass
 
         fetch_dataset = fetch_dataset2
@@ -288,7 +307,11 @@ if __name__ == '__main__':
             origImagePath = taskConfig.singularity_image
             imageFilename = os.path.basename(origImagePath)
             destImagePath = f'{workerLocalDir}/{imageFilename}'
-            copy_file(origImagePath, destImagePath)
+
+            # @warning
+            # Can't recursively fetch/copy 'singularity' executable for
+            # COPY_FILE task.
+            copy_file(sourcePath=origImagePath, destPath=destImagePath)
 
             # Return the new path.
             return destImagePath
@@ -296,7 +319,17 @@ if __name__ == '__main__':
             # Return raw executable, for tasks that don't have contenerized
             # image.
             return taskConfig.raw_executable
-
+    def fetch_executable_cleanup(taskConfig: TaskConfig):
+        if vmEngine is VMEngine.SINGULARITY and \
+             taskConfig.singularity_image is not None and \
+             isPipelineDistributed:
+            origImagePath = taskConfig.singularity_image
+            imageFilename = os.path.basename(origImagePath)
+            tmpImagePath = f'{workerLocalDir}/{imageFilename}'
+            remove_file(dirPath=tmpImagePath)
+    fetch_executable.cleanup = fetch_executable_cleanup
+        
+    
     # - BidsValidator.
     # @todo allow per subject bids validation when dataset > available disk
     # space.
@@ -307,13 +340,17 @@ if __name__ == '__main__':
                 fetch_executable(BIDS_VALIDATOR),
                 datasetDir=fetch_dataset(),
                 logFile=f'{outputDir}/log/validate-bids.txt'
+            ),
+            lambda didSucceed: (
+                fetch_executable.cleanup(BIDS_VALIDATOR),
+                fetch_dataset.cleanup()
             )
         )
         if not didSucceed:
             sys.exit(1)
 
-    subjectIds = dataset.getSubjectIds()
     # MRIQC: qc by subjects.
+    subjectIds = dataset.getSubjectIds()
     if enableMRIQC and granularity is not Granularity.SESSION:
         successfulSubjectIds, failedSubjectIds = scheduler.batchTask(
             'mriqc_subj',
@@ -326,6 +363,11 @@ if __name__ == '__main__':
                 nproc=nproc,
                 memGb=memGb,
                 subjectId=subjectId
+            ),
+            lambda didSucceed, subjectId: (
+                fetch_executable.cleanup(MRIQC_SUBJECT),
+                fetch_dataset.cleanup(subjectId),
+                didSucceed and remove_dir(f'{workDir}/mriqc/sub-{subjectId}')
             ),
             # lambda subjectId: fetch_dataset.cleanup(subjectId=subjectId),
             subjectIds
@@ -348,6 +390,11 @@ if __name__ == '__main__':
                 logFile=f'{outputDir}/log/mriqc/group.txt',
                 nproc=nproc,
                 memGb=memGb,
+            ),
+            lambda didSucceed: (
+                fetch_executable.cleanup(MRIQC_GROUP),
+                fetch_dataset.cleanup(),
+                didSucceed and remove_dir(f'{workDir}/mriqc/group')
             )
         )
         if not didSucceed:
@@ -377,6 +424,11 @@ if __name__ == '__main__':
                 # templateflowDataDir='./templateflow',
                 subjectId=subjectId
             ),
+            lambda didSucceed, subjectId: (
+                fetch_executable.cleanup(SMRIPREP_SUBJECT),
+                fetch_dataset.cleanup(subjectId),
+                didSucceed and remove_dir(f'{workDir}/smriprep/sub-{subjectId}')
+            ),
             subjectIds
         )
         if len(successfulSubjectIds) == 0:
@@ -401,6 +453,7 @@ if __name__ == '__main__':
                 bidsFilterFile=f'{outputDir}/filefilters/fmriprep/func/sub-{subjectId}/ses-{sessionId}/filter.json',  # @todo remove func
                 sessionId=sessionId
             ),
+            lambda didSucceed, subjectId, sessionId: None,
             sessionIds
         )
         if len(successfulSessionIds) == 0:
@@ -428,6 +481,12 @@ if __name__ == '__main__':
                 sessionId=sessionId,
                 # fasttrackFixDir=fasttrackFixDir
             ),
+            lambda didSucceed, subjectId, sessionId: (
+                fetch_executable.cleanup(FMRIPREP_SESSION),
+                fetch_dataset.cleanup(subjectId, [sessionId]),
+                didSucceed and remove_dir(
+                    f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}')
+            ),
             successfulSessionIds
         )
         if len(successfulSessionIds) == 0:
@@ -451,6 +510,12 @@ if __name__ == '__main__':
                 nproc=nproc,
                 memMb=memGb*1024,
                 subjectId=subjectId,
+            ),
+            lambda didSucceed, subjectId: (
+                fetch_executable.cleanup(FMRIPREP_SUBJECT),
+                fetch_dataset.cleanup(subjectId),
+                didSucceed and remove_dir(
+                    f'{workDir}/fmriprep/sub-{subjectId}')
             ),
             subjectIds
         )

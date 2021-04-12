@@ -9,7 +9,7 @@ class LocalScheduler:
     def __init__(self, historyCachePath: str):
         self._history = TasksHistory(historyCachePath)
 
-    def runTask(self, taskName: str, taskFn, *args, **kwargs) -> bool:
+    def runTask(self, taskName: str, taskFn, cleanupFn, *args, **kwargs) -> bool:
         cache = self._history
 
         # Bypass task if it has already run successfully.
@@ -35,10 +35,15 @@ class LocalScheduler:
             (exit code {returnCode}).'.replace('    ', '')
             print(doneMsg)
 
+            # Run cleanup.
+            if cleanupFn is not None:
+                # @todo Do something with the clean up output.
+                cleanupFn(didSucceed, *args, **kwargs)
+
             # Return success/failure
             return didSucceed
 
-    def batchTask(self, taskName: str, taskFn, itemIds: Set[any]):
+    def batchTask(self, taskName: str, taskFn, cleanupFn, itemIds: Set[any]):
         print(f'Batch {taskName} {str(itemIds)} starting.')
 
         successfulItemIds = []
@@ -49,15 +54,15 @@ class LocalScheduler:
             if isinstance(itemId, collections.Sequence) and not \
                isinstance(itemId, str):
                 didSucceed = self.runTask(f'{taskName}_{str(itemId)}', taskFn,
-                                          *itemId)
+                                          cleanupFn, *itemId)
             # Expand dictionnary itemId as argument for the function.
             elif isinstance(itemId, dict):
                 didSucceed = self.runTask(f'{taskName}_{str(itemId)}', taskFn,
-                                          **itemId)
+                                          cleanupFn, **itemId)
             # Send itemId as argument for the function.
             else:
                 didSucceed = self.runTask(f'{taskName}_{itemId}', taskFn,
-                                          itemId)
+                                          cleanupFn, itemId)
             # Store itemId if successful.
             if didSucceed:
                 successfulItemIds.append(itemId)
