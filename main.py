@@ -18,6 +18,7 @@ from src.dataset import LocalDataset, DistributedDataset
 # from src.pipeline import LocalPipeline, DistributedPipeline
 
 # Run the pipeline.
+# @warning the pipeline currently doesn't cleanup the work dir when task fails.
 if __name__ == '__main__':
     # 0. Check python version.
     # @note f-strings require python 3.6, will throw syntax error instead
@@ -367,7 +368,7 @@ if __name__ == '__main__':
             lambda didSucceed, subjectId: (
                 fetch_executable.cleanup(MRIQC_SUBJECT),
                 fetch_dataset.cleanup(subjectId),
-                (didSucceed or isPipelineDistributed) and remove_dir(f'{workDir}/mriqc/sub-{subjectId}')
+                didSucceed and remove_dir(f'{workDir}/mriqc/sub-{subjectId}')
             ),
             # lambda subjectId: fetch_dataset.cleanup(subjectId=subjectId),
             subjectIds
@@ -394,7 +395,7 @@ if __name__ == '__main__':
             lambda didSucceed: (
                 fetch_executable.cleanup(MRIQC_GROUP),
                 fetch_dataset.cleanup(),
-                (didSucceed or isPipelineDistributed) and remove_dir(f'{workDir}/mriqc/group')
+                didSucceed and remove_dir(f'{workDir}/mriqc/group')
             )
         )
         if not didSucceed:
@@ -427,7 +428,7 @@ if __name__ == '__main__':
             lambda didSucceed, subjectId: (
                 fetch_executable.cleanup(SMRIPREP_SUBJECT),
                 fetch_dataset.cleanup(subjectId),
-                (didSucceed or isPipelineDistributed) and remove_dir(f'{workDir}/smriprep/sub-{subjectId}')
+                didSucceed and remove_dir(f'{workDir}/smriprep/sub-{subjectId}')
             ),
             subjectIds
         )
@@ -484,7 +485,7 @@ if __name__ == '__main__':
             lambda didSucceed, subjectId, sessionId: (
                 fetch_executable.cleanup(FMRIPREP_SESSION),
                 fetch_dataset.cleanup(subjectId, [sessionId]),
-                (didSucceed or isPipelineDistributed) and remove_dir(
+                didSucceed and remove_dir(
                     f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}')
             ),
             successfulSessionIds
@@ -514,7 +515,7 @@ if __name__ == '__main__':
             lambda didSucceed, subjectId: (
                 fetch_executable.cleanup(FMRIPREP_SUBJECT),
                 fetch_dataset.cleanup(subjectId),
-                (didSucceed or isPipelineDistributed) and remove_dir(
+                didSucceed and remove_dir(
                     f'{workDir}/fmriprep/sub-{subjectId}')
             ),
             subjectIds
