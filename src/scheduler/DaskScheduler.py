@@ -17,6 +17,9 @@ class DaskScheduler(LocalScheduler):
         def blockingTaskFn(*args, **kwargs):
             delayedTaskFn = dask.delayed(taskFn)
             delayedResult = delayedTaskFn(*args, **kwargs)
+            # @warning relying on resources imply we setup available resources
+            # on every worker, including those setup through dask LocalCluster
+            # or MPI, otherwise task scheduling will get stuck.
             future = client.compute(delayedResult, resources={'job': 1})
             taskResult = future.result()
             print(taskResult)
@@ -51,6 +54,9 @@ class DaskScheduler(LocalScheduler):
                 delayedResults[itemId] = didSucceedDelayed
 
         # Compute batch.
+        # @warning relying on resources imply we setup available resources
+        # on every worker, including those setup through dask LocalCluster
+        # or MPI, otherwise task scheduling will get stuck.
         computations = client.compute(delayedResults, resources={'job': 1})
         results = computations.result()
 

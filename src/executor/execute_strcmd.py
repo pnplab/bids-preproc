@@ -7,14 +7,15 @@ from . import TaskResult
 def execute_strcmd(command: str) -> bool:
     # Launch command and capture stdout/stderr stream.
     stream = sarge.Capture()
-    result = sarge.run(command, async_=False, shell=True)
+    result = sarge.run(command, async_=False, shell=True,
+                       stdout=sarge.Capture(), stderr=sarge.Capture())
 
     didSucceed = True if result.returncode == 0 else False
     return TaskResult(
         didSucceed=didSucceed,
         returnCode=result.returncode,
-        stdout=None,  # stdout=result.stdout.text,
-        stderr=None  # result.stderr.text
+        stdout=result.stdout.text,  # stdout=result.stdout.text,
+        stderr=result.stderr.text  # result.stderr.text
     )
 
 

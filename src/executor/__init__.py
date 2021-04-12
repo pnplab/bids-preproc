@@ -1,6 +1,9 @@
-from .TaskFactory import TaskFactory
+from .TaskConfig import TaskConfig
 from .TaskResult import TaskResult
-from .execute_strcmd import execute_strcmd
+
+from .oneliner import oneliner
 from .dockerize import dockerize
 from .singularize import singularize
-from .oneliner import oneliner
+from .execute_strcmd import execute_strcmd
+
+from .TaskFactory import TaskFactory

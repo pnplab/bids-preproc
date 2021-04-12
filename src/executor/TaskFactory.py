@@ -1,21 +1,36 @@
 import itertools
-from typing import Dict
-from . import execute_strcmd, dockerize, singularize, oneliner
-from ..path import PathPlaceHolder, OutputFile
+from typing import Type
+from . import TaskConfig, execute_strcmd, oneliner, dockerize, singularize
+from ..path import OutputFile
 from ..cli import VMEngine
 
 
-# @warning set -o pipefail is only compatible with bash, not
-# dash (debian).
+# @warning
+# set -o pipefail is only compatible with bash, not dash (debian).
 def logify(cmd, logPath):
+    # @warning
+    # relying on `tee` can be/is memory and bandwidth hungry regarding fmriprep
+    # poutput for instance, as log is transfered (if dask) and stored within
+    # the result object.
+    # return f'''(set -o pipefail && {cmd} 2>&1 | tee "{logPath}")'''
     return f'''(set -o pipefail && {cmd} 2>&1 | tee "{logPath}")'''
 
 
 # @warning output cannot be merged into a single.
 def bashify(cmd):
-    # we need heredoc syntax in order to allow inner cmd quotes without
-    # extra escaping.
-    return ('bash <<__BASH_CMD_END__' '\n'
+    # We need heredoc syntax in order to allow inner cmd quotes without
+    # extra escaping. Quotes around __BASH_CMD_END__ allow to selectively
+    # escape from bash dollar interpolation or not.
+    # cf. https://stackoverflow.com/a/27921346/939741
+    #
+    # example input with mixed python / bash interpolation / escaping:
+    # {0} -l "{archiveDir}/{archiveName}" --list-format=normal
+    #     | awk "NR > 2 {{ print \$NF; }}"
+    #     | grep 'sub-'
+    #     | sed -E "s;^sub-([^/]+)/?(ses-([^/]+))?.*;\\1,\\3;g"
+    #     | sed -E "s/,?\$//g"
+    #     | sort | uniq
+    return ('bash <<\'__BASH_CMD_END__\'' '\n'
             f'{cmd}' '\n'
             '__BASH_CMD_END__')
 
@@ -23,9 +38,11 @@ def bashify(cmd):
 class TaskFactory:
     # Returns a function that will execute the specified command with the
     # appropriate virtualisation setup (docker, singularity, direct, ...).
+    # @warning Will capture all output (stdout & stderr), might overload RAM,
+    # but only if logify is not used (is logFile variable is not set when user
+    # executes the task).
     @classmethod
-    def generate(vmType: VMEngine, executable: str, cmdTemplate: str,
-                 **argsDecorators: Dict[str, PathPlaceHolder]):
+    def generate(cls: Type, vmType: VMEngine, taskConfig: TaskConfig):
         # Create task.
         def task(*args, **kargs):
             # Decorate command args (ie. path type placeholders, which can be used
@@ -33,8 +50,15 @@ class TaskFactory:
             # checking and directory creation).
             newKargs = {}
             for arg, val in itertools.chain(enumerate(args), kargs.items()):
-                if arg in argsDecorators:
-                    wrapper = argsDecorators[arg]
+                # Convert arg to string (when needed), in order for *args to be
+                # in the same format as **kargs, and thus be accessible from
+                # dict. - for some reason this is required in order to avoid
+                # `TypeError: keywords must be strings` exception when using
+                # the task method with positional arguments.
+                arg = str(arg)
+
+                if arg in taskConfig.decorators:
+                    wrapper = taskConfig.decorators[arg]
                     val = wrapper(val)
                 newKargs[arg] = val
 
@@ -43,20 +67,20 @@ class TaskFactory:
             cmd = None
             if vmType == VMEngine.NONE:
                 cmd = str.format(
-                    cmdTemplate,
-                    executable,
+                    taskConfig.cmd,
+                    taskConfig.raw_executable if '0' not in newKargs else newKargs['0'],
                     **newKargs
                 )
             elif vmType == VMEngine.DOCKER:
                 cmd = dockerize(
-                    cmdTemplate,
-                    executable,
+                    taskConfig.cmd,
+                    taskConfig.docker_image if '0' not in newKargs else newKargs['0'],
                     **newKargs
                 )
             elif vmType == VMEngine.SINGULARITY:
                 cmd = singularize(
-                    cmdTemplate,
-                    executable,
+                    taskConfig.cmd,
+                    taskConfig.singularity_image if '0' not in newKargs else newKargs['0'],
                     **newKargs
                 )
 
