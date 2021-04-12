@@ -37,6 +37,7 @@ if __name__ == '__main__':
     enableMRIQC = args.enableMRIQC
     enableSMRiPrep = args.enableSMRiPrep
     enableFMRiPrep = args.enableFMRiPrep
+    enablePybidsCache = args.enablePybidsCache
     fasttrackFixDir = os.path.dirname(os.path.realpath(__file__)) + '/smriprep-fasttrack-fix'
     workerCount = args.workerCount
     nproc = args.workerCpuCount
@@ -183,7 +184,8 @@ if __name__ == '__main__':
     # across subjects / sessions.
     dataset = None
     if not isPipelineDistributed:
-        dataset = LocalDataset(datasetDir, f'{outputDir}/.bids_cache')
+        dataset = LocalDataset(datasetDir, f'{outputDir}/.bids_cache' if
+            enablePybidsCache else None)
     # Wrap inside distributed pipeline, in order to prevent issues due to
     # distributed file system (missing subject ids, etc). These issues are
     # speculated, although they seems to have been appearing randomly, until I

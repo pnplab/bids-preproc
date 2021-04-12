@@ -93,6 +93,11 @@ def readCLIArgs():
         dest='enableFMRiPrep'
     )
     parser.add_argument(
+        '--enable-pybids-cache',
+        action='store_true',
+        dest='enablePybidsCache'
+    )
+    parser.add_argument(
         '--reset',
         action='store_true',
         dest='reset'
