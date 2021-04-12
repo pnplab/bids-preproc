@@ -231,7 +231,7 @@ if __name__ == '__main__':
             localOutputDir=None  # tbd
 
             # Arg check / Edge case.
-            if subjectIds is None and sessionIds is not None:
+            if subjectId is None and sessionIds is not None:
                 err = 'dataset session extraction requires subject id'
                 raise Exception(err)
             # Extract the whole dataset if subject is not defined.
