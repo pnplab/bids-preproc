@@ -174,7 +174,7 @@ if __name__ == '__main__':
                 archiveName=archiveName,
                 logFile=f'{outputDir}/log/archive-dataset.txt'
             ),
-            lambda: None
+            lambda didSucceed: None
         )
         if not didSucceed:
             sys.exit(-1)
