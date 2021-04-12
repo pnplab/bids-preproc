@@ -219,13 +219,13 @@ if __name__ == '__main__':
     if not isPipelineDistributed:
         def fetch_dataset1(subjectId: str = None, sessionIds: Set[str] = None):
             return datasetDir
-        def cleanup():
+        def cleanup(subjectId: str = None, sessionIds: Set[str] = None):
             pass
         
         fetch_dataset = fetch_dataset1
         fetch_dataset.cleanup = cleanup
     else:
-        def fetch_dataset2(subjectId: str, sessionIds: Set[str] = None):
+        def fetch_dataset2(subjectId: str = None, sessionIds: Set[str] = None):
             archiveDir=f'{outputDir}/archives/'
             archiveName=os.path.basename(datasetDir)
             localOutputDir=None  # tbd
@@ -258,7 +258,7 @@ if __name__ == '__main__':
                                             sessionId=sessionId)
             return localOutputDir
 
-        def cleanup2(subjectId: str):
+        def cleanup2(subjectId: str = None, sessionIds: Set[str] = None):
             # @TODO
             pass
 
@@ -362,7 +362,7 @@ if __name__ == '__main__':
                 fetch_executable(SMRIPREP_SUBJECT),
                 datasetDir=fetch_dataset(
                     subjectId,
-                    # Extract only sessions with anat.
+                    # Extract only the sessions containing anats.
                     # Limit to max two sessions in case there is T1 in every
                     # sessions (fmriprep will limit to one or two anat anyway).
                     # cf. https://fmriprep.org/en/0.6.3/workflows.html#longitudinal-processing
@@ -413,6 +413,7 @@ if __name__ == '__main__':
         successfulSessionIds, failedSessionIds = scheduler.batchTask(
             'fmriprep_func',
             lambda subjectId, sessionId: fmriprep_session(
+                fetch_executable(FMRIPREP_SESSION),
                 datasetDir=fetch_dataset(subjectId, [sessionId]),
                 anatsDerivativesDir=f'{outputDir}/derivatives/smriprep',
                 workDir=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}',
@@ -440,6 +441,7 @@ if __name__ == '__main__':
         successfulSessionIds, failedSessionIds = scheduler.batchTask(
             'fmriprep_all',
             lambda subjectId: fmriprep_subject(
+                fetch_executable(FMRIPREP_SUBJECT),
                 datasetDir=fetch_dataset(subjectId),
                 workDir=f'{workDir}/fmriprep/sub-{subjectId}',
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
