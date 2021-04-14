@@ -127,7 +127,7 @@ if __name__ == '__main__':
                           # fetch dataset information.
         client = dask.distributed.Client(cluster)
         scheduler = DaskScheduler(
-            f'{outputDir}/.task_cache.csv', client, forceResourceRequest=True)
+            f'{outputDir}/.task_cache.csv', client)
     elif executor is Executor.MPI:
         # Setup max job per worker, through worker resource limitation
         # cf. https://distributed.dask.org/en/latest/resources.html#specifying-resources
