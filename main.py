@@ -47,6 +47,8 @@ if __name__ == '__main__':
     workerSharedDir = args.workerSharedDir  # can be None
     isPipelineDistributed = False if workerLocalDir is None else True
     workDir = f'{outputDir}/work/' if workerLocalDir is None else f'{workerLocalDir}/work/'  # @warning can only be used within dask task
+    templateflowDataDir = './templateflow'
+    templateflowDataDirWithinVM = '/v_templateflowDataDir'  # check _volume_mapping.py file
     print(f'nproc: {nproc}')
     print(f'memGb: {memGb}')
 
@@ -124,7 +126,7 @@ if __name__ == '__main__':
             env_extra=[
                 # @warning this requires to download templateflow files.
                 # @todo `module load singularity` out !
-                'export SINGULARITYENV_TEMPLATEFLOW_HOME="$(pwd)/templateflow"',
+                f'export SINGULARITYENV_TEMPLATEFLOW_HOME="{templateflowDataDirWithinVM}"',
                 'module load singularity'
             ]
         )
@@ -367,6 +369,7 @@ if __name__ == '__main__':
                 datasetDir=fetch_dataset(subjectId),
                 workDir=f'{workDir}/mriqc/sub-{subjectId}',
                 outputDir=f'{outputDir}/derivatives/mriqc',
+                templateflowDataDir=templateflowDataDir,
                 logFile=f'{outputDir}/log/mriqc/sub-{subjectId}.txt',
                 nproc=nproc,
                 memGb=memGb,
@@ -395,6 +398,7 @@ if __name__ == '__main__':
                 datasetDir=fetch_dataset(),
                 workDir=f'{workDir}/mriqc/group',
                 outputDir=f'{outputDir}/derivatives/mriqc',
+                templateflowDataDir=templateflowDataDir,
                 logFile=f'{outputDir}/log/mriqc/group.txt',
                 nproc=nproc,
                 memGb=memGb,
@@ -427,6 +431,7 @@ if __name__ == '__main__':
                 outputDir=f'{outputDir}/derivatives',  # /smriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/smriprep/sub-{subjectId}.txt',
                 freesurferLicenseFile='./licenses/freesurfer.txt',
+                templateflowDataDir=templateflowDataDir,
                 nproc=nproc,
                 memGb=memGb,
                 subjectId=subjectId
@@ -480,6 +485,7 @@ if __name__ == '__main__':
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt',
                 freesurferLicenseFile='./licenses/freesurfer.txt',
+                templateflowDataDir=templateflowDataDir,
                 bidsFilterFile=f'{outputDir}/filefilters/fmriprep/func/sub-{subjectId}/ses-{sessionId}/filter.json',  # @todo remove func -- ? why?
                 nproc=nproc,
                 memMb=memGb*1024,
@@ -512,6 +518,7 @@ if __name__ == '__main__':
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}.txt',
                 freesurferLicenseFile='./licenses/freesurfer.txt',
+                templateflowDataDir=templateflowDataDir,
                 nproc=nproc,
                 memMb=memGb*1024,
                 subjectId=subjectId,

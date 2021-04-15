@@ -184,6 +184,7 @@ MRIQC_SUBJECT = TaskConfig(
         "workDir": OutputDir,
         "datasetDir": InputDir,
         "outputDir": OutputDir,
+        "templateflowDataDir": InputDir,
         "memGb": math.floor
     }
 )
