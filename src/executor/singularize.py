@@ -10,9 +10,7 @@ def singularize(cmd: str, imagePath: str, *args, **kargs) -> str:
         inputVolumes['/usr/local/miniconda/lib/python3.7/site-packages/smriprep/smriprep/utils'] = kargs['fasttrackFixDir']
 
     parsedCmd = cmd.format(
-        # @todo `module load singularity` out !
-        # Inject this as '$0' (the command name).
-        # @note singuluarity `--no-home` removed since:
+        # @note singularity `--no-home` removed since:
         #     cf. https://github.com/poldracklab/mriqc/issues/853
         #     cf. https://github.com/nipreps/fmriprep/pull/1830
         oneliner(f'''

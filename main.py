@@ -121,7 +121,12 @@ if __name__ == '__main__':
             # Requires at least 200G available (~half of 480GB beluga).
             job_extra=['--tmp="240G"' if granularity is Granularity.SESSION \
                 else '--tmp="300G"'],
-            env_extra=['module load singularity']
+            env_extra=[
+                # @warning this requires to download templateflow files.
+                # @todo `module load singularity` out !
+                'export SINGULARITYENV_TEMPLATEFLOW_HOME="./templateflow"',
+                'module load singularity'
+            ]
         )
         cluster.scale(1)  # at least one worker required in order to be able to
                           # fetch dataset information.
