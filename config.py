@@ -216,8 +216,8 @@ MRIQC_GROUP = TaskConfig(
 
 SMRIPREP_SUBJECT = TaskConfig(
     raw_executable='smriprep',
-    singularity_image='../singularity-images/smriprep-0.7.0.simg',
-    docker_image='nipreps/smriprep:0.7.0',
+    singularity_image='../singularity-images/smriprep-0.7.1.simg',
+    docker_image='nipreps/smriprep:0.7.1',
     cmd='''
         {0}
             --participant-label "{subjectId}"
@@ -247,8 +247,8 @@ SMRIPREP_SUBJECT = TaskConfig(
 
 FMRIPREP_SUBJECT = TaskConfig(
     raw_executable='fmriprep',
-    singularity_image='../singularity-images/fmriprep-20.2.0.simg',
-    docker_image='nipreps/fmriprep:20.2.0',
+    singularity_image='../singularity-images/fmriprep-20.2.1.simg',
+    docker_image='nipreps/fmriprep:20.2.1',
     cmd='''
         {0}
             --notrack
@@ -311,8 +311,8 @@ FMRIPREP_SESSION_FILTER = TaskConfig(
 
 FMRIPREP_SESSION = TaskConfig(
     raw_executable='fmriprep',
-    singularity_image='../singularity-images/fmriprep-20.2.0.simg',
-    docker_image='nipreps/fmriprep:20.2.0',
+    singularity_image='../singularity-images/fmriprep-20.2.1.simg',
+    docker_image='nipreps/fmriprep:20.2.1',
     cmd='''
         {0}
             --notrack
