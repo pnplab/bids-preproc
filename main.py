@@ -336,7 +336,7 @@ if __name__ == '__main__':
             origImagePath = taskConfig.singularity_image
             imageFilename = os.path.basename(origImagePath)
             tmpImagePath = f'{workerLocalDir}/{imageFilename}'
-            remove_file(dirPath=tmpImagePath)
+            remove_file(filePath=tmpImagePath)
     fetch_executable.cleanup = fetch_executable_cleanup
         
     
