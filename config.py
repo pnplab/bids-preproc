@@ -140,7 +140,7 @@ LIST_ARCHIVE_SESSIONS = TaskConfig(
         {0} -l "{archiveDir}/{archiveName}" --list-format=normal
             | awk "NR > 2 {{ print \$NF; }}"
             | grep 'sub-'
-            | sed -E "s;^sub-([^/]+)/?(ses-([^/]+))?(/anat/[^.]+_T1w.nii(.gz)?\$)?.*;\\1,\\3,\\4;g"
+            | sed -E "s;^sub-([^/]+)/?(ses-([^/]+))?(/anat/[^.]+_T1w.nii(.gz)?)?.*;\\1,\\3,\\4;g"
             | sed -E "s/,+\$//g"
             | sort | uniq
     ''',

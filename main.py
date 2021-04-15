@@ -189,8 +189,8 @@ if __name__ == '__main__':
     # across subjects / sessions.
     dataset = None
     if not isPipelineDistributed:
-        dataset = LocalDataset(datasetDir, f'{outputDir}/.bids_cache' if
-            enablePybidsCache else None)
+        pybidsCache = f'{outputDir}/.bids_cache' if enablePybidsCache else None
+        dataset = LocalDataset(datasetDir, pybidsCache)
     # Wrap inside distributed pipeline, in order to prevent issues due to
     # distributed file system (missing subject ids, etc). These issues are
     # speculated, although they seems to have been appearing randomly, until I
@@ -421,7 +421,7 @@ if __name__ == '__main__':
                     # Limit to max two sessions in case there is T1 in every
                     # sessions (fmriprep will limit to one or two anat anyway).
                     # cf. https://fmriprep.org/en/0.6.3/workflows.html#longitudinal-processing
-                    dataset.getAnatSessionIdsBySubjectId(subjectId)[:2]
+                    dataset.getAnatSessionIdsBySubjectId(subjectId)[:2]  # @todo @warning dev func for non-dar dataset
                 ),
                 workDir=f'{workDir}/smriprep/sub-{subjectId}',
                 outputDir=f'{outputDir}/derivatives',  # /smriprep will be add by the cmd.
