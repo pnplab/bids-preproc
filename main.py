@@ -288,6 +288,12 @@ if __name__ == '__main__':
                 remove_dir(dirPath=localOutputDir)
             # Cleanup by session if both subject and session are defined.
             else:
+                # Check sessions are not empty, has pipeline has not been
+                # developed to use session granularity when bids dataset
+                # doesn't contain session.
+                if len(sessionIds) == 0:
+                    err="subject granularity shall be used when there is no session."
+                    raise Exception(err)
                 localOutputDir = f'{workerLocalDir}/dataset-{subjectId}-{".".join(sessionIds)}'
                 remove_dir(dirPath=localOutputDir)
             pass
