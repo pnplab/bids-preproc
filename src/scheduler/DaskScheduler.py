@@ -83,7 +83,7 @@ class DaskScheduler(LocalScheduler):
         # Retrieve and process result progressively.
         successfulItemIds = []
         failedItemIds = []
-        for future, taskResult in dask.distributed.as_completed(futures,
+        for future, taskResult in dask.distributed.as_completed(futures.values(),
                                                                 loop=client.loop,
                                                                 with_results=True):
             itemId = list(futures.keys())[list(futures.values()).index(future)]
