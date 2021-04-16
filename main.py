@@ -47,6 +47,7 @@ if __name__ == '__main__':
     workerSharedDir = args.workerSharedDir  # can be None
     isPipelineDistributed = False if workerLocalDir is None else True
     workDir = f'{outputDir}/work/' if workerLocalDir is None else f'{workerLocalDir}/work/'  # @warning can only be used within dask task
+    # @todo copy on local node 
     templateflowDataDir = './templateflow'
     templateflowDataDirWithinVM = '/v_templateflowDataDir'  # check _volume_mapping.py file
     print(f'nproc: {nproc}')
@@ -438,7 +439,10 @@ if __name__ == '__main__':
             ),
             lambda didSucceed, subjectId: (
                 fetch_executable.cleanup(SMRIPREP_SUBJECT),
-                fetch_dataset.cleanup(subjectId),
+                fetch_dataset.cleanup(
+                    subjectId,
+                    dataset.getAnatSessionIdsBySubjectId(subjectId)[:2]
+                ),
                 didSucceed and remove_dir(f'{workDir}/smriprep/sub-{subjectId}')
             ),
             subjectIds

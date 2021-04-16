@@ -19,7 +19,7 @@ class InputDir(PathPlaceHolder):
 
         # Do checkup.
         if not path.exists():
-            raise FileNotFoundError(f'file not found: {path}')
+            raise FileNotFoundError(f'dir not found: {path}')
         if not path.is_dir():
             raise FileNotFoundError(f'not a dir: {path}')
 
