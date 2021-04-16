@@ -379,7 +379,7 @@ if __name__ == '__main__':
             lambda didSucceed, subjectId: (
                 fetch_executable.cleanup(MRIQC_SUBJECT),
                 fetch_dataset.cleanup(subjectId),
-                didSucceed and remove_dir(f'{workDir}/mriqc/sub-{subjectId}')
+                didSucceed and remove_dir(dirPath=f'{workDir}/mriqc/sub-{subjectId}')
             ),
             # lambda subjectId: fetch_dataset.cleanup(subjectId=subjectId),
             subjectIds
@@ -407,7 +407,7 @@ if __name__ == '__main__':
             lambda didSucceed: (
                 fetch_executable.cleanup(MRIQC_GROUP),
                 fetch_dataset.cleanup(),
-                didSucceed and remove_dir(f'{workDir}/mriqc/group')
+                didSucceed and remove_dir(dirPath=f'{workDir}/mriqc/group')
             )
         )
         if not didSucceed:
@@ -443,7 +443,7 @@ if __name__ == '__main__':
                     subjectId,
                     dataset.getAnatSessionIdsBySubjectId(subjectId)[:2]
                 ),
-                didSucceed and remove_dir(f'{workDir}/smriprep/sub-{subjectId}')
+                didSucceed and remove_dir(dirPath=f'{workDir}/smriprep/sub-{subjectId}')
             ),
             subjectIds
         )
@@ -501,7 +501,7 @@ if __name__ == '__main__':
                 fetch_executable.cleanup(FMRIPREP_SESSION),
                 fetch_dataset.cleanup(subjectId, [sessionId]),
                 didSucceed and remove_dir(
-                    f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}')
+                    dirPath=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}')
             ),
             successfulSessionIds
         )
@@ -531,7 +531,7 @@ if __name__ == '__main__':
                 fetch_executable.cleanup(FMRIPREP_SUBJECT),
                 fetch_dataset.cleanup(subjectId),
                 didSucceed and remove_dir(
-                    f'{workDir}/fmriprep/sub-{subjectId}')
+                    dirPath=f'{workDir}/fmriprep/sub-{subjectId}')
             ),
             subjectIds
         )
