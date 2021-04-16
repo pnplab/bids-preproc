@@ -98,7 +98,9 @@ class DistributedDataset(LocalDataset):
             for rawSubSesStr in rawSubSesStrList:
                 subSesPair = rawSubSesStr.split(',')
                 subject = subSesPair[0]
+                subject = subject if subject != '' else None
                 session = subSesPair[1] if len(subSesPair) >= 2 else None
+                session = session if session != '' else None
                 hasAnat = len(subSesPair) >= 3
 
                 if subject not in sessionPerSubjectsDict:
