@@ -471,7 +471,9 @@ if __name__ == '__main__':
         successfulSessionIds, failedSessionIds = scheduler.batchTask(
             'fmriprep_filter',
             lambda subjectId, sessionId: fmriprep_session_filter(
-                logFile=f'{outputDir}/log/fmriprep/filters/sub-{subjectId}-{sessionId}.txt',
+                # @warning logFile would break the output, as the logs are the
+                # output!
+                # logFile=f'{outputDir}/log/fmriprep/filters/sub-{subjectId}-{sessionId}.txt',
                 bidsFilterFile=f'{outputDir}/filefilters/fmriprep/func/sub-{subjectId}/ses-{sessionId}/filter.json',  # @todo remove func
                 sessionId=sessionId
             ),
