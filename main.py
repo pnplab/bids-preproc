@@ -19,6 +19,8 @@ from src.dataset import LocalDataset, DistributedDataset
 
 # Run the pipeline.
 # @warning the pipeline currently doesn't cleanup the work dir when task fails.
+# @warning docker requires manual app modification.
+# https://stackoverflow.com/questions/44533319/how-to-assign-more-memory-to-docker-container/44533437#44533437
 if __name__ == '__main__':
     # 0. Check python version.
     # @note f-strings require python 3.6, will throw syntax error instead

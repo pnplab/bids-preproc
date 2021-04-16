@@ -214,6 +214,11 @@ MRIQC_GROUP = TaskConfig(
     }
 )
 
+# @warning 6000mb crashes on docker. (? was it ram ?)
+# @note some additional output spaces seems required later on by fmriprep for
+#       intermediate processing (do they?).
+# @warning potential templateflow compat issue.
+# cf. https://neurostars.org/t/tips-for-getting-a-bare-metal-installation-of-fmriprep-1-4-1-working/4660/2
 SMRIPREP_SUBJECT = TaskConfig(
     raw_executable='smriprep',
     singularity_image='../singularity-images/smriprep-0.7.1.simg',
