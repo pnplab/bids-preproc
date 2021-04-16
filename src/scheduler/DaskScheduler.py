@@ -77,7 +77,7 @@ class DaskScheduler(LocalScheduler):
         # or MPI, otherwise task scheduling will get stuck.
         futures = {}
         for itemId, jobInstance in jobInstances.items():
-            future = jobInstances.compute(resources={'job': 1})
+            future = jobInstance.compute(resources={'job': 1})
             futures[itemId].append(future)
 
         # Retrieve and process result progressively.
