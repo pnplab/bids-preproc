@@ -42,6 +42,8 @@ class DaskScheduler(LocalScheduler):
     def batchTask(self, taskName: str, taskFn, cleanupFn, itemIds: Set[any]):
         client = self._client
         cache = self._history
+        successfulItemIds = []
+        failedItemIds = []
 
         print(f'Batch {taskName} {str(itemIds)} starting.')
 
@@ -55,10 +57,16 @@ class DaskScheduler(LocalScheduler):
         # Gather task batch.
         delayedTaskFn = dask.delayed(mergedTaskAndCleanupFn)
         jobInstances = {}
-
         for itemId in itemIds:
+            taskItemName = f'{taskName}_{str(itemId)}'
+            # First ensure task hasn't already been successfuly executed.
+            if self.didTaskSucceed(taskItemName):
+                # Log success.
+                print(f'Task {taskItemName} already successfully executed.')
+                # Add to the list of succeeded task.
+                successfulItemIds.append(itemId)
             # Expand list itemId as argument for the function.
-            if isinstance(itemId, collections.Sequence) and not \
+            elif isinstance(itemId, collections.Sequence) and not \
                isinstance(itemId, str):
                 jobInstance = delayedTaskFn(*itemId)
                 jobInstances[itemId] = jobInstance
@@ -81,8 +89,6 @@ class DaskScheduler(LocalScheduler):
             futures[itemId] = future
 
         # Retrieve and process result progressively.
-        successfulItemIds = []
-        failedItemIds = []
         for future, taskResult in dask.distributed.as_completed(futures.values(),
                                                                 loop=client.loop,
                                                                 with_results=True):
