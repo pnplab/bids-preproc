@@ -113,7 +113,7 @@ class DistributedDataset(LocalDataset):
                 if hasAnat:
                     tuple = (subject, session)
                     sessionsWithAnatList.append(tuple)
-                
+            
             # Create prefetched dataset.
             subjectIds = list(sessionPerSubjectsDict.keys())
             sessionIds = sessionPerSubjectsDict

@@ -54,34 +54,39 @@ class DaskScheduler(LocalScheduler):
 
         # Gather task batch.
         delayedTaskFn = dask.delayed(mergedTaskAndCleanupFn)
-        delayedResults = {}
+        jobInstances = {}
 
         for itemId in itemIds:
             # Expand list itemId as argument for the function.
             if isinstance(itemId, collections.Sequence) and not \
                isinstance(itemId, str):
-                didSucceedDelayed = delayedTaskFn(*itemId)
-                delayedResults[itemId] = didSucceedDelayed
+                jobInstance = delayedTaskFn(*itemId)
+                jobInstances[itemId] = jobInstance
             # Expand dictionnary itemId as argument for the function.
             elif isinstance(itemId, dict):
-                didSucceedDelayed = delayedTaskFn(**itemId)
-                delayedResults[itemId] = didSucceedDelayed
+                jobInstance = delayedTaskFn(**itemId)
+                jobInstances[itemId] = jobInstance
             # Send itemId as argument for the function.
             else:
-                didSucceedDelayed = delayedTaskFn(itemId)
-                delayedResults[itemId] = didSucceedDelayed
+                jobInstance = delayedTaskFn(itemId)
+                jobInstances[itemId] = jobInstance
 
         # Compute batch.
         # @warning relying on resources imply we setup available resources
         # on every worker, including those setup through dask LocalCluster
         # or MPI, otherwise task scheduling will get stuck.
-        computations = client.compute(delayedResults, resources={'job': 1})
+        futures = {}
+        for itemId, jobInstance in jobInstances.items():
+            future = jobInstances.compute(resources={'job': 1})
+            futures[itemId].append(future)
+
+        # Retrieve and process result progressively.
         successfulItemIds = []
         failedItemIds = []
-        for future, taskResult in dask.distributed.as_completed(computations,
+        for future, taskResult in dask.distributed.as_completed(futures,
                                                                 loop=client.loop,
                                                                 with_results=True):
-            itemId = list(computations.keys())[list(computations.values()).index(future)]
+            itemId = list(futures.keys())[list(futures.values()).index(future)]
             taskItemName = f'{taskName}_{str(itemId)}'
             didSucceed = taskResult.didSucceed
             returnCode = taskResult.returnCode
