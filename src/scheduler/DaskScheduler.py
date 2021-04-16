@@ -78,7 +78,7 @@ class DaskScheduler(LocalScheduler):
         futures = {}
         for itemId, jobInstance in jobInstances.items():
             future = jobInstance.compute(resources={'job': 1})
-            futures[itemId].append(future)
+            futures[itemId] = future
 
         # Retrieve and process result progressively.
         successfulItemIds = []
