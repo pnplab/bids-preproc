@@ -256,6 +256,12 @@ if __name__ == '__main__':
                 localOutputDir = f'{workerLocalDir}/dataset'
                 extract_dataset(archiveDir=archiveDir,
                                 archiveName=archiveName, outputDir=localOutputDir)
+            # Check sessions are not empty, has pipeline has not been
+            # developed to use session granularity when bids dataset
+            # doesn't contain session.
+            elif len(sessionIds) == 0:
+                err="subject granularity shall be used when there is no session."
+                raise Exception(err)
             # Extract by subject if session is not defined.
             elif sessionIds is None:
                 localOutputDir=f'{workerLocalDir}/dataset-{subjectId}'
@@ -288,14 +294,14 @@ if __name__ == '__main__':
             elif sessionIds is None:
                 localOutputDir = f'{workerLocalDir}/dataset-{subjectId}'
                 remove_dir(dirPath=localOutputDir)
+            # Check sessions are not empty, has pipeline has not been
+            # developed to use session granularity when bids dataset
+            # doesn't contain session.
+            elif len(sessionIds) == 0:
+                err="subject granularity shall be used when there is no session."
+                raise Exception(err)
             # Cleanup by session if both subject and session are defined.
             else:
-                # Check sessions are not empty, has pipeline has not been
-                # developed to use session granularity when bids dataset
-                # doesn't contain session.
-                if len(sessionIds) == 0:
-                    err="subject granularity shall be used when there is no session."
-                    raise Exception(err)
                 localOutputDir = f'{workerLocalDir}/dataset-{subjectId}-{".".join(sessionIds)}'
                 remove_dir(dirPath=localOutputDir)
             pass
