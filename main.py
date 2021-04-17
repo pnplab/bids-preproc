@@ -256,12 +256,6 @@ if __name__ == '__main__':
                 localOutputDir = f'{workerLocalDir}/dataset'
                 extract_dataset(archiveDir=archiveDir,
                                 archiveName=archiveName, outputDir=localOutputDir)
-            # Check sessions are not empty, has pipeline has not been
-            # developed to use session granularity when bids dataset
-            # doesn't contain session.
-            elif len(sessionIds) == 0:
-                err="subject granularity shall be used when there is no session."
-                raise Exception(err)
             # Extract by subject if session is not defined.
             elif sessionIds is None:
                 localOutputDir=f'{workerLocalDir}/dataset-{subjectId}'
@@ -270,6 +264,12 @@ if __name__ == '__main__':
                                         archiveName=archiveName,
                                         outputDir=localOutputDir,
                                         subjectId=subjectId)
+            # Check sessions are not empty, has pipeline has not been
+            # developed to use session granularity when bids dataset
+            # doesn't contain session.
+            elif len(sessionIds) == 0:
+                err="subject granularity shall be used when there is no session."
+                raise Exception(err)
             # Extract by session if both subject and session are defined.
             else:
                 localOutputDir=f'{workerLocalDir}/dataset-{subjectId}-{".".join(sessionIds)}'
@@ -511,7 +511,7 @@ if __name__ == '__main__':
                 memMb=memGb*1024,
                 subjectId=subjectId,
                 sessionId=sessionId,
-                # fasttrackFixDir=fasttrackFixDir
+                fasttrackFixDir=fasttrackFixDir
             ),
             lambda didSucceed, subjectId, sessionId: (
                 fetch_executable.cleanup(FMRIPREP_SESSION),
