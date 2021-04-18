@@ -548,7 +548,7 @@ if __name__ == '__main__':
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt',
                 freesurferLicenseFile='./licenses/freesurfer.txt',
-                templateflowDataDir=fetch_mri_templates(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),  # probably not used.
+                templateflowDataDir=fetch_mri_templates(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 bidsFilterFile=f'{outputDir}/filefilters/fmriprep/func/sub-{subjectId}/ses-{sessionId}/filter.json',  # @todo remove func -- ? why?
                 nproc=nproc,
                 memMB=memGB*1000, # not 1024 / GiB
