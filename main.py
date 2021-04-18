@@ -361,8 +361,24 @@ if __name__ == '__main__':
             tmpImagePath = f'{workerLocalDir}/{imageFilename}'
             remove_file(filePath=tmpImagePath)
     fetch_executable.cleanup = fetch_executable_cleanup
-        
-    
+
+    # Setup T1 template retrieval method.
+    # @warning no cleanup since multiple task might rely on the same template
+    # fetch.
+    def fetch_mri_templates():
+        if not isPipelineDistributed:
+            return templateflowDataDir
+        else:
+            origDirPath = templateflowDataDir
+            dirName = os.path.basename(templateflowDataDir)
+            destDirPath = f'{workerLocalDir}/{dirName}'
+
+            # Ensure we don't override already existing template dir.
+            if not os.path.exists(destDirPath):
+                copy_file(sourcePath=origDirPath, destPath=destDirPath)
+
+            return destDirPath
+
     # - BidsValidator.
     # @todo allow per subject bids validation when dataset > available disk
     # space.
@@ -421,7 +437,7 @@ if __name__ == '__main__':
                 datasetDir=fetch_dataset(),
                 workDir=f'{workDir}/mriqc/group',
                 outputDir=f'{outputDir}/derivatives/mriqc',
-                templateflowDataDir=templateflowDataDir,
+                templateflowDataDir=fetch_mri_templates(),
                 logFile=f'{outputDir}/log/mriqc/group.txt',
                 nproc=nproc,
                 memGB=memGB,
