@@ -171,7 +171,7 @@ MRIQC_SUBJECT = TaskConfig(
         {0}
             --no-sub
             --nprocs {nproc}
-            --mem_gb {memGb}
+            --mem_gb {memGB}
             -vvvv
             -w "{workDir}"
             "{datasetDir}"
@@ -185,7 +185,7 @@ MRIQC_SUBJECT = TaskConfig(
         "datasetDir": InputDir,
         "outputDir": OutputDir,
         "templateflowDataDir": InputDir,
-        "memGb": math.floor
+        "memGB": math.floor
     }
 )
 
@@ -197,7 +197,7 @@ MRIQC_GROUP = TaskConfig(
         {0}
             --no-sub
             --nprocs {nproc}
-            --mem_gb {memGb}
+            --mem_gb {memGB}
             -vvvv
             -w "{workDir}"
             "{datasetDir}"
@@ -210,7 +210,7 @@ MRIQC_GROUP = TaskConfig(
         "datasetDir": InputDir,
         "outputDir": OutputDir,
         "templateflowDataDir": InputDir,
-        "memGb": math.floor
+        "memGB": math.floor
     }
 )
 
@@ -230,7 +230,7 @@ SMRIPREP_SUBJECT = TaskConfig(
             --output-spaces
                 MNI152NLin6Asym MNI152NLin2009cAsym OASIS30ANTs
             --nprocs {nproc}
-            --mem-gb {memGb}
+            --mem-gb {memGB}
             --fs-no-reconall
             -vvvv
             --fs-license "{freesurferLicenseFile}"
@@ -246,7 +246,7 @@ SMRIPREP_SUBJECT = TaskConfig(
         "outputDir": OutputDir,
         "templateflowDataDir": InputDir,
         "freesurferLicenseFile": InputFile,
-        "memGb": math.floor
+        "memGB": math.floor
     }
 )
 
@@ -260,7 +260,7 @@ FMRIPREP_SUBJECT = TaskConfig(
             --skip-bids-validation
             --ignore slicetiming
             --nprocs {nproc}
-            --mem-mb {memMb}
+            --mem-mb {memMB}
             -vvvv
             --fs-no-reconall
             --fs-license "{freesurferLicenseFile}"
@@ -277,7 +277,7 @@ FMRIPREP_SUBJECT = TaskConfig(
         "outputDir": OutputDir,
         "templateflowDataDir": InputDir,
         "freesurferLicenseFile": InputFile,
-        "memMb": math.floor
+        "memMB": math.floor
     }
 )
 
@@ -330,7 +330,7 @@ FMRIPREP_SESSION = TaskConfig(
                 MNI152NLin2009cAsym
             --ignore slicetiming
             --nprocs {nproc}
-            --mem-mb {memMb}
+            --mem-mb {memMB}
             -vvvv
             --fs-no-reconall
             --fs-license "{freesurferLicenseFile}"
@@ -351,6 +351,6 @@ FMRIPREP_SESSION = TaskConfig(
         "templateflowDataDir": InputDir,
         "freesurferLicenseFile": InputFile,
         "bidsFilterFile": InputFile,
-        "memMb": math.floor
+        "memMB": math.floor
     }
 )

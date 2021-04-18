@@ -108,7 +108,7 @@ def readCLIArgs():
     defaultMemoryGb = psutil.virtual_memory().total / 1024 / 1024 / 1024
     parser.add_argument(
         '--worker-memory-gb',
-        dest='workerMemoryGb',
+        dest='workerMemoryGB',
         type=int,
         default=defaultMemoryGb
     )

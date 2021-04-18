@@ -43,7 +43,7 @@ if __name__ == '__main__':
     fasttrackFixDir = os.path.dirname(os.path.realpath(__file__)) + '/smriprep-fasttrack-fix'
     workerCount = args.workerCount
     nproc = args.workerCpuCount
-    memGb = args.workerMemoryGb
+    memGB = args.workerMemoryGB
     workerWallTime = args.workerWallTime
     workerLocalDir = args.workerLocalDir  # can be None
     workerSharedDir = args.workerSharedDir  # can be None
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     templateflowDataDir = './templateflow'
     templateflowDataDirWithinVM = '/v_templateflowDataDir'  # check _volume_mapping.py file
     print(f'nproc: {nproc}')
-    print(f'memGb: {memGb}')
+    print(f'memGB: {memGB}')
 
     # Reset cache files/folders.
     if reset:
@@ -115,7 +115,7 @@ if __name__ == '__main__':
             # Disable worker kill when scheduler is not accessible for > 60
             # seconds.
             death_timeout=0,
-            memory=f'{memGb} GB',
+            memory=f'{memGB} GB',
             walltime=workerWallTime,
             # @warning does it work with '$' embedded ???? -- seems to!!
             local_directory=f'{workDir}/dask', 
@@ -133,8 +133,16 @@ if __name__ == '__main__':
                 'module load singularity'
             ]
         )
-        cluster.scale(1)  # at least one worker required in order to be able to
-                          # fetch dataset information.
+        # Reduces scripts memory allocation from one gig, just allowing a
+        # buffer to prevent memory overhead.
+        print('memGB has been reduced by one GB in order to leave a buffer.')
+        memGB = memGB-1
+
+        # At least one worker required in order to be able to fetch dataset
+        # information.
+        cluster.scale(1)
+
+        # Setup scheduler.
         client = dask.distributed.Client(cluster)
         scheduler = DaskScheduler(
             f'{outputDir}/.task_cache.csv', client)
@@ -387,7 +395,7 @@ if __name__ == '__main__':
                 templateflowDataDir=templateflowDataDir,
                 logFile=f'{outputDir}/log/mriqc/sub-{subjectId}.txt',
                 nproc=nproc,
-                memGb=memGb,
+                memGB=memGB,
                 subjectId=subjectId
             ),
             lambda didSucceed, subjectId: (
@@ -416,7 +424,7 @@ if __name__ == '__main__':
                 templateflowDataDir=templateflowDataDir,
                 logFile=f'{outputDir}/log/mriqc/group.txt',
                 nproc=nproc,
-                memGb=memGb,
+                memGB=memGB,
             ),
             lambda didSucceed: (
                 fetch_executable.cleanup(MRIQC_GROUP),
@@ -446,9 +454,9 @@ if __name__ == '__main__':
                 outputDir=f'{outputDir}/derivatives',  # /smriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/smriprep/sub-{subjectId}.txt',
                 freesurferLicenseFile='./licenses/freesurfer.txt',
-                templateflowDataDir=templateflowDataDir,
+                templateflowDataDir=fetch_mri_templates(),
                 nproc=nproc,
-                memGb=memGb,
+                memGB=memGB,
                 subjectId=subjectId
             ),
             lambda didSucceed, subjectId: (
@@ -505,10 +513,10 @@ if __name__ == '__main__':
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt',
                 freesurferLicenseFile='./licenses/freesurfer.txt',
-                templateflowDataDir=templateflowDataDir,
+                templateflowDataDir=fetch_mri_templates(),
                 bidsFilterFile=f'{outputDir}/filefilters/fmriprep/func/sub-{subjectId}/ses-{sessionId}/filter.json',  # @todo remove func -- ? why?
                 nproc=nproc,
-                memMb=memGb*1024,
+                memMB=memGB*1000, # not 1024 / GiB
                 subjectId=subjectId,
                 sessionId=sessionId,
                 fasttrackFixDir=fasttrackFixDir
@@ -538,9 +546,9 @@ if __name__ == '__main__':
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}.txt',
                 freesurferLicenseFile='./licenses/freesurfer.txt',
-                templateflowDataDir=templateflowDataDir,
+                templateflowDataDir=fetch_mri_templates(),
                 nproc=nproc,
-                memMb=memGb*1024,
+                memMB=memGB*1000, # not 1024 / GiB
                 subjectId=subjectId,
             ),
             lambda didSucceed, subjectId: (
