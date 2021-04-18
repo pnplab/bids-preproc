@@ -364,21 +364,24 @@ if __name__ == '__main__':
     fetch_executable.cleanup = fetch_executable_cleanup
 
     # Setup T1 template retrieval method.
-    # @warning no cleanup since multiple task might rely on the same template
-    # fetch.
-    def fetch_mri_templates():
+    # @warning ensure output paths are all different if you run pipeline as
+    # distributed.
+    def fetch_mri_templates(suffix: str = ''):
         if not isPipelineDistributed:
             return templateflowDataDir
         else:
             origDirPath = templateflowDataDir
-            dirName = os.path.basename(templateflowDataDir)
-            destDirPath = f'{workerLocalDir}/{dirName}'
-
-            # Ensure we don't override already existing template dir.
-            if not os.path.exists(destDirPath):
-                copy_dir(sourcePath=origDirPath, destPath=destDirPath)
-
+            origDirName = os.path.basename(templateflowDataDir)
+            destDirPath = f'{workerLocalDir}/{origDirName}{suffix}'
+            copy_dir(sourcePath=origDirPath, destPath=destDirPath)
             return destDirPath
+    def fetch_mri_templates_cleanup(suffix: str = ''):
+        origDirPath = templateflowDataDir
+        origDirName = os.path.basename(templateflowDataDir)
+        destDirPath = f'{workerLocalDir}/{origDirName}{suffix}'
+        remove_dir(dirPath=destDirPath)
+    fetch_mri_templates.cleanup = fetch_mri_templates_cleanup
+
 
     # - BidsValidator.
     # @todo allow per subject bids validation when dataset > available disk
@@ -409,7 +412,7 @@ if __name__ == '__main__':
                 datasetDir=fetch_dataset(subjectId),
                 workDir=f'{workDir}/mriqc/sub-{subjectId}',
                 outputDir=f'{outputDir}/derivatives/mriqc',
-                templateflowDataDir=templateflowDataDir,
+                templateflowDataDir=fetch_mri_templates(suffix=f'_mriqc_subj_{subjectId}'),
                 logFile=f'{outputDir}/log/mriqc/sub-{subjectId}.txt',
                 nproc=nproc,
                 memGB=memGB,
@@ -418,6 +421,7 @@ if __name__ == '__main__':
             lambda didSucceed, subjectId: (
                 fetch_executable.cleanup(MRIQC_SUBJECT),
                 fetch_dataset.cleanup(subjectId),
+                fetch_mri_templates.cleanup(suffix=f'_mriqc_subj_{subjectId}'),
                 didSucceed and remove_dir(dirPath=f'{workDir}/mriqc/sub-{subjectId}')
             ),
             # lambda subjectId: fetch_dataset.cleanup(subjectId=subjectId),
@@ -438,7 +442,7 @@ if __name__ == '__main__':
                 datasetDir=fetch_dataset(),
                 workDir=f'{workDir}/mriqc/group',
                 outputDir=f'{outputDir}/derivatives/mriqc',
-                templateflowDataDir=fetch_mri_templates(),
+                templateflowDataDir=templateflowDataDir,  # probably not used
                 logFile=f'{outputDir}/log/mriqc/group.txt',
                 nproc=nproc,
                 memGB=memGB,
@@ -471,7 +475,7 @@ if __name__ == '__main__':
                 outputDir=f'{outputDir}/derivatives',  # /smriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/smriprep/sub-{subjectId}.txt',
                 freesurferLicenseFile='./licenses/freesurfer.txt',
-                templateflowDataDir=fetch_mri_templates(),
+                templateflowDataDir=fetch_mri_templates(suffix=f'_smriprep_anat_{subjectId}'),
                 nproc=nproc,
                 memGB=memGB,
                 subjectId=subjectId
@@ -482,7 +486,9 @@ if __name__ == '__main__':
                     subjectId,
                     dataset.getAnatSessionIdsBySubjectId(subjectId)[:2]
                 ),
-                didSucceed and remove_dir(dirPath=f'{workDir}/smriprep/sub-{subjectId}')
+                fetch_mri_templates.cleanup(suffix=f'_smriprep_anat_{subjectId}'),
+                didSucceed and remove_dir(
+                    dirPath=f'{workDir}/smriprep/sub-{subjectId}')
             ),
             subjectIds
         )
@@ -530,7 +536,7 @@ if __name__ == '__main__':
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt',
                 freesurferLicenseFile='./licenses/freesurfer.txt',
-                templateflowDataDir=fetch_mri_templates(),
+                templateflowDataDir=fetch_mri_templates(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),  # probably not used.
                 bidsFilterFile=f'{outputDir}/filefilters/fmriprep/func/sub-{subjectId}/ses-{sessionId}/filter.json',  # @todo remove func -- ? why?
                 nproc=nproc,
                 memMB=memGB*1000, # not 1024 / GiB
@@ -541,6 +547,7 @@ if __name__ == '__main__':
             lambda didSucceed, subjectId, sessionId: (
                 fetch_executable.cleanup(FMRIPREP_SESSION),
                 fetch_dataset.cleanup(subjectId, [sessionId]),
+                fetch_mri_templates.cleanup(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 didSucceed and remove_dir(
                     dirPath=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}')
             ),
@@ -563,7 +570,7 @@ if __name__ == '__main__':
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}.txt',
                 freesurferLicenseFile='./licenses/freesurfer.txt',
-                templateflowDataDir=fetch_mri_templates(),
+                templateflowDataDir=fetch_mri_templates(suffix=f'_fmriprep_all_{subjectId}'),
                 nproc=nproc,
                 memMB=memGB*1000, # not 1024 / GiB
                 subjectId=subjectId,
@@ -571,6 +578,7 @@ if __name__ == '__main__':
             lambda didSucceed, subjectId: (
                 fetch_executable.cleanup(FMRIPREP_SUBJECT),
                 fetch_dataset.cleanup(subjectId),
+                fetch_mri_templates.cleanup(suffix=f'_fmriprep_all_{subjectId}'),
                 didSucceed and remove_dir(
                     dirPath=f'{workDir}/fmriprep/sub-{subjectId}')
             ),
