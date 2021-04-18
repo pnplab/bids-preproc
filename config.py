@@ -32,8 +32,8 @@ COPY_DIR = TaskConfig(
     cmd='''
         {0}
             -avz --no-g --no-p
-            "{sourcePath}"
-            "{destPath}"
+            "{sourcePath}/"
+            "{destPath}/"
     ''',
     decorators={
         "sourcePath": InputDir,
