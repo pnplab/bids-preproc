@@ -232,12 +232,18 @@ if __name__ == '__main__':
             print('error: couldn\'t extract dataset from archive to retrieve info')
             sys.exit(-2)
 
-    # Set workerCount to number of subject if == -1 and scale worker on/if
-    # slurm cluster scheduler is used accordingly.
+    # Set workerCount to number of subject if == -1 and scale worker count
+    # accordingly slurm cluster scheduler is used.
+    effectiveWorkerCount = workerCount
     if workerCount == -1:
-        workerCount = len(dataset.getSubjectIds())
+        effectiveWorkerCount = len(dataset.getSubjectIds())
+    # Do not launch more worker than what we can use at the moment (thus max
+    # one per subject). This might be upscaled later on.
+    else:
+        effectiveWorkerCount = min(workerCount, len(dataset.getSubjectIds()))
+    # Scale slurm worker count.
     if executor is Executor.SLURM:
-        cluster.scale(workerCount)
+        cluster.scale(effectiveWorkerCount)
 
     # Setup dataset retrieval method (either path, or archive extraction).
     fetch_dataset = None
@@ -382,8 +388,7 @@ if __name__ == '__main__':
         remove_dir(dirPath=destDirPath)
     fetch_mri_templates.cleanup = fetch_mri_templates_cleanup
 
-
-    # - BidsValidator.
+    # BidsValidator.
     # @todo allow per subject bids validation when dataset > available disk
     # space.
     if enableBidsValidator and granularity is Granularity.DATASET:
@@ -504,7 +509,14 @@ if __name__ == '__main__':
         for subjectId in subjectIds
         for sessionId in dataset.getSessionIdsBySubjectId(subjectId)
     ]
-    
+
+    # Upscale the worker count if user requested an higher number, and there
+    # are more parallelly processable tasks than subjects [case A].
+    if workerCount != -1 and workerCount != effectiveWorkerCount and \
+    granularity is Granularity.SESSION and executor is Executor.SLURM:
+        effectiveWorkerCount = min(workerCount, len(sessionIds))
+        cluster.scale(effectiveWorkerCount)
+
     # FMRiPrep: generate sessions' func file filters [case A].
     if enableFMRiPrep and granularity is Granularity.SESSION:
         successfulSessionIds, failedSessionIds = scheduler.batchTask(
