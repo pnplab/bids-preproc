@@ -5,7 +5,7 @@ import dask.distributed  # for MT
 import dask_jobqueue
 import dask_mpi
 from typing import Set
-from config import REMOVE_FILE, REMOVE_DIR, COPY_FILE, \
+from config import COPY_FILE, COPY_DIR, REMOVE_FILE, REMOVE_DIR, \
                    ARCHIVE_DATASET, EXTRACT_DATASET, EXTRACT_DATASET_SUBJECT, \
                    EXTRACT_DATASET_SESSION, \
                    LIST_ARCHIVE_SESSIONS, BIDS_VALIDATOR, MRIQC_SUBJECT, \
@@ -160,9 +160,10 @@ if __name__ == '__main__':
     print(client)
 
     # Generate tasks.
+    copy_file = TaskFactory.generate(VMEngine.NONE, COPY_FILE)
+    copy_dir = TaskFactory.generate(VMEngine.NONE, COPY_DIR)
     remove_file = TaskFactory.generate(VMEngine.NONE, REMOVE_FILE)
     remove_dir = TaskFactory.generate(VMEngine.NONE, REMOVE_DIR)
-    copy_file = TaskFactory.generate(VMEngine.NONE, COPY_FILE)
     archive_dataset = TaskFactory.generate(VMEngine.NONE, ARCHIVE_DATASET)  # distributed only / no singularity/docker image available.
     extract_dataset = TaskFactory.generate(VMEngine.NONE, EXTRACT_DATASET)  # distributed only / no singularity/docker image available.
     extract_dataset_subject = TaskFactory.generate(VMEngine.NONE, EXTRACT_DATASET_SUBJECT)  # distributed only / no singularity/docker image available.
@@ -375,7 +376,7 @@ if __name__ == '__main__':
 
             # Ensure we don't override already existing template dir.
             if not os.path.exists(destDirPath):
-                copy_file(sourcePath=origDirPath, destPath=destDirPath)
+                copy_dir(sourcePath=origDirPath, destPath=destDirPath)
 
             return destDirPath
 

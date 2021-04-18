@@ -25,17 +25,19 @@ COPY_FILE = TaskConfig(
     }
 )
 
-REMOVE_DIR = TaskConfig(
-    raw_executable='rm',
+COPY_DIR = TaskConfig(
+    raw_executable='rsync',
     singularity_image=None,
     docker_image=None,
     cmd='''
         {0}
-            -r
-            "{dirPath}"
+            -avz --no-g --no-p
+            "{sourcePath}"
+            "{destPath}"
     ''',
     decorators={
-        "dirPath": InputDir
+        "sourcePath": InputDir,
+        "destPath": OutputDir
     }
 )
 
@@ -49,6 +51,20 @@ REMOVE_FILE = TaskConfig(
     ''',
     decorators={
         "filePath": InputFile
+    }
+)
+
+REMOVE_DIR = TaskConfig(
+    raw_executable='rm',
+    singularity_image=None,
+    docker_image=None,
+    cmd='''
+        {0}
+            -r
+            "{dirPath}"
+    ''',
+    decorators={
+        "dirPath": InputDir
     }
 )
 
