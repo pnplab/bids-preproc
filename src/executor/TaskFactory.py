@@ -66,6 +66,7 @@ class TaskFactory:
             # when relevant.
             cmd = None
             if vmType == VMEngine.NONE:
+		# @warning fmriprep anat fast track fix wont be injected if docker or singularity is not used!
                 cmd = str.format(
                     taskConfig.cmd,
                     taskConfig.raw_executable if '0' not in newKargs else newKargs['0'],

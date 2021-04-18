@@ -5,6 +5,9 @@ from . import oneliner
 def dockerize(cmd: str, image: str, *args, **kargs) -> str:
     inputVolumes, outputVolumes, newKargs = mapPathsToVolumesInArgs(*args,
                                                                     **kargs)
+    # @todo cleanup once smriprep is fixed!
+    if 'fasttrackFixDir' in kargs:
+        inputVolumes['/usr/local/miniconda/lib/python3.7/site-packages/smriprep/utils'] = kargs['fasttrackFixDir']
 
     parsedCmd = cmd.format(
         oneliner(f'''

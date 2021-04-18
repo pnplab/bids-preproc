@@ -7,7 +7,6 @@ from json import loads
 from pkg_resources import resource_filename as pkgrf
 from bids.layout.writing import build_path
 from bids import BIDSLayout
-from .. import config
 
 
 def get_outputnode_spec():
@@ -65,7 +64,7 @@ def collect_derivatives(derivatives_dir, subject_id, std_spaces, freesurfer,
             if not (derivatives_dir / i).exists():
                 i = i.rstrip('.gz')
                 if not (derivatives_dir / i).exists():
-                    config.loggers.workflow.warning('derivatives file not found for item: %s, %s' %
+                    print('derivatives file not found for item: %s, %s' %
                                                     (str(i), str(derivatives_dir / i)))
                     return None
             result.append(str(derivatives_dir / i))
@@ -98,7 +97,7 @@ def collect_derivatives(derivatives_dir, subject_id, std_spaces, freesurfer,
 
             # Log if no path found.
             if not paths or len(paths) == 0:
-                config.loggers.workflow.warning(
+                print(
                     'space item not found for baseline: %s, %s, %s' % space, k, q)
                 return None
 
@@ -142,7 +141,7 @@ def collect_derivatives(derivatives_dir, subject_id, std_spaces, freesurfer,
 
             # Log if no path found.
             if not paths or len(paths) == 0:
-                config.loggers.workflow.warning(
+                print(
                     'space item not found for std_xfms: %s, %s, %s' % space, k, q)
                 return None
 
@@ -155,7 +154,7 @@ def collect_derivatives(derivatives_dir, subject_id, std_spaces, freesurfer,
             q['subject'] = subject_id
             item = _check_item(build_path(q, patterns))
             if not item:
-                config.loggers.workflow.warning(
+                print(
                     'freesurfer item not found for surfaces: %s, %s' % k, q)
                 return None
 

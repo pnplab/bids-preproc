@@ -286,10 +286,7 @@ FMRIPREP_SUBJECT = TaskConfig(
 #
 # @note we've removed the anat data from the filter, as fmriprep seems to
 # reprocess the anatomical t1 even though we've used anat fast-track.
-# > "flair": {{"datatype": "anat", "suffix": "FLAIR"}},
-# > "t2w": {{"datatype": "anat", "suffix": "T2w"}},
-# > "t1w": {{"datatype": "anat", "suffix": "T1w"}},
-# > "roi": {{"datatype": "anat", "suffix": "roi"}}
+
 FMRIPREP_SESSION_FILTER = TaskConfig(
     raw_executable='printf',
     singularity_image=None,  # @TODO !!! map to NONE
@@ -308,7 +305,11 @@ FMRIPREP_SESSION_FILTER = TaskConfig(
                 "datatype": "func",
                 "suffix": "sbref",
                 "session": "{sessionId}"
-            }}
+            }},
+            "flair": {{"datatype": "anat", "suffix": "FLAIR"}},
+            "t2w": {{"datatype": "anat", "suffix": "T2w"}},
+            "t1w": {{"datatype": "anat", "suffix": "T1w"}},
+            "roi": {{"datatype": "anat", "suffix": "roi"}}
         }}' > "{bidsFilterFile}"
     ''',
     # Map paths to vm volumes using argument decorators.

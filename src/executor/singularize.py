@@ -7,7 +7,7 @@ def singularize(cmd: str, imagePath: str, *args, **kargs) -> str:
                                                                     **kargs)
     # @todo cleanup once smriprep is fixed!
     if 'fasttrackFixDir' in kargs:
-        inputVolumes['/usr/local/miniconda/lib/python3.7/site-packages/smriprep/smriprep/utils'] = kargs['fasttrackFixDir']
+        inputVolumes['/usr/local/miniconda/lib/python3.7/site-packages/smriprep/utils'] = kargs['fasttrackFixDir']
 
     parsedCmd = cmd.format(
         # @note singularity `--no-home` removed since:
