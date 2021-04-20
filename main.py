@@ -90,7 +90,7 @@ if __name__ == '__main__':
         workerWallTimeAsSec += int(workerWallTimeArray[1]) * 60
         workerTimeout = min(3600, workerWallTimeAsSec - 3600)
         if len(workerWallTimeArray) == 3:
-            workerWallTimeAsSec += workerWallTimeArray[2]
+            workerWallTimeAsSec += int(workerWallTimeArray[2])
         elif len(workerWallTimeArray) != 2:
             raise Exception("unexpected walltime format.")
         cluster = dask_jobqueue.SLURMCluster(
