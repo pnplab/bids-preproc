@@ -88,11 +88,11 @@ if __name__ == '__main__':
         workerWallTimeArray = workerWallTimeArray[1 if len(workerWallTimeArray) == 2 else 0].split(sep=':')
         workerWallTimeAsSec += int(workerWallTimeArray[0]) * 3600
         workerWallTimeAsSec += int(workerWallTimeArray[1]) * 60
-        workerTimeout = max(3600, workerWallTimeAsSec - 3600)
         if len(workerWallTimeArray) == 3:
             workerWallTimeAsSec += int(workerWallTimeArray[2])
         elif len(workerWallTimeArray) != 2:
             raise Exception("unexpected walltime format.")
+        workerLifetime = max(3*3600, workerWallTimeAsSec - 3600)
         cluster = dask_jobqueue.SLURMCluster(
             # @warning
             # worker job stealing failing on slurmcluster with resources when
@@ -129,7 +129,7 @@ if __name__ == '__main__':
                 # timeout within one day on our compute canada / beluga system
                 # for some reason).
                 # cf. https://github.com/dask/dask-jobqueue/issues/122#issuecomment-626333697
-                '--lifetime {workerTimeout}s',
+                f'--lifetime {workerLifetime}s',
                 '--lifetime-stagger 5m',
                 '--lifetime-restart'
             ],
