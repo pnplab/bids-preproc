@@ -80,6 +80,19 @@ if __name__ == '__main__':
         client = dask.distributed.Client(cluster)
         scheduler = DaskScheduler(f'{outputDir}/.task_cache.csv', client)
     elif executor is Executor.SLURM:
+        # Convert walltime to seconds in order to restart worker adterwards if
+        # needed.
+        workerWallTimeArray = workerWallTime.split(sep='-')
+        workerWallTimeAsSec = 0
+        workerWallTimeAsSec += workerWallTimeArray[0] * 24 * 3600 if len(workerWallTimeArray) == 2 else 0
+        workerWallTimeArray = workerWallTimeArray[0].split(sep=':')
+        workerWallTimeAsSec += workerWallTimeArray[0] * 3600
+        workerWallTimeAsSec += workerWallTimeArray[1] * 60
+        workerTimeout = min(3600, workerWallTimeAsSec - 3600)
+        if len(workerWallTimeArray) == 3:
+            workerWallTimeAsSec += workerWallTimeArray[2]
+        elif len(workerWallTimeArray) != 2:
+            raise Exception("unexpected walltime format.")
         cluster = dask_jobqueue.SLURMCluster(
             # @warning
             # worker job stealing failing on slurmcluster with resources when
@@ -99,18 +112,27 @@ if __name__ == '__main__':
             # -- removed because fear of deadlock due to locking
             # sarge/subprocess while loop
             processes=1,
-            # Limit to max 1 job per worker through passing arbitraty resources
-            # limit variables to worker launch and task scheduling.
-            # cf. https://jobqueue.dask.org/en/latest/examples.html#slurm-deployment-providing-additional-arguments-to-the-dask-workers
-            # 
-            # @warning
-            # `The resources keyword only affects the final result tasks by
-            # default. There isn't a great way to restrict the entire
-            # computation today.` (2019)
-            # cf. https://github.com/dask/distributed/issues/2832#issuecomment-510668723
-            # Weird since resources in #compute allow to specify global or
-            # per-task resource allocation.
-            extra=['--resources job=1'],  
+            extra=[
+                # Limit to max 1 job per worker through passing arbitraty resources
+                # limit variables to worker launch and task scheduling.
+                # cf. https://jobqueue.dask.org/en/latest/examples.html#slurm-deployment-providing-additional-arguments-to-the-dask-workers
+                #
+                # @warning
+                # `The resources keyword only affects the final result tasks by
+                # default. There isn't a great way to restrict the entire
+                # computation today.` (2019)
+                # cf. https://github.com/dask/distributed/issues/2832#issuecomment-510668723
+                # Weird since resources in #compute allow to specify global or
+                # per-task resource allocation.
+                '--resources job=1',
+                # Restart workers until they're not needed anymore (most do
+                # timeout within one day on our compute canada / beluga system
+                # for some reason).
+                # cf. https://github.com/dask/dask-jobqueue/issues/122#issuecomment-626333697
+                '--lifetime {workerTimeout}s',
+                '--lifetime-stagger 5m',
+                '--lifetime-restart'
+            ],
             project='def-porban',
             # Disable worker kill when scheduler is not accessible for > 10h (60
             # seconds by default).
