@@ -88,7 +88,7 @@ if __name__ == '__main__':
         workerWallTimeArray = workerWallTimeArray[1 if len(workerWallTimeArray) == 2 else 0].split(sep=':')
         workerWallTimeAsSec += int(workerWallTimeArray[0]) * 3600
         workerWallTimeAsSec += int(workerWallTimeArray[1]) * 60
-        workerTimeout = min(3600, workerWallTimeAsSec - 3600)
+        workerTimeout = max(3600, workerWallTimeAsSec - 3600)
         if len(workerWallTimeArray) == 3:
             workerWallTimeAsSec += int(workerWallTimeArray[2])
         elif len(workerWallTimeArray) != 2:
