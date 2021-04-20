@@ -28,7 +28,15 @@ class DaskScheduler(LocalScheduler):
             # @warning relying on resources imply we setup available resources
             # on every worker, including those setup through dask LocalCluster
             # or MPI, otherwise task scheduling will get stuck.
-            future = client.compute(delayedResult, resources={'job': 1})
+            # @note scheduler='processes' might help to prevent GIL error and 
+            # worker timeout issues which we have had such as:
+            # `distributed.core - INFO - Event loop was unresponsive in Nanny
+            # for 6.94s.  This is often caused by long-running GIL-holding
+            # functions or moving large chunks of data. This can cause timeouts
+            # and instability.`
+            # cf. https://docs.dask.org/en/latest/setup/single-machine.html#single-machine-scheduler
+            future = client.compute(delayedResult, resources={'job': 1},
+                                    scheduler='processes')
             taskResult = future.result()
             print(taskResult)
 
@@ -83,9 +91,16 @@ class DaskScheduler(LocalScheduler):
         # @warning relying on resources imply we setup available resources
         # on every worker, including those setup through dask LocalCluster
         # or MPI, otherwise task scheduling will get stuck.
+        # @note scheduler='processes' might help to prevent GIL error and
+        # worker timeout issues which we have had such as:
+        # `distributed.core - INFO - Event loop was unresponsive in Nanny for
+        # 6.94s.  This is often caused by long-running GIL-holding functions or
+        # moving large chunks of data. This can cause timeouts and instability.`
+        # cf. https://docs.dask.org/en/latest/setup/single-machine.html#single-machine-scheduler
         futures = {}
         for itemId, jobInstance in jobInstances.items():
-            future = client.compute(jobInstance, resources={'job': 1})
+            future = client.compute(jobInstance, resources={'job': 1},
+                                    scheduler='processes')
             futures[itemId] = future
 
         # Retrieve and process result progressively.
