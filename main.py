@@ -581,7 +581,6 @@ if __name__ == '__main__':
             # Extract by subject if session is not defined.
             elif sessionIds is None:
                 localOutputDir=f'{workerLocalDir}/smriprep-{subjectId}'
-                # @todo check result!
                 extract_dataset_subject(archiveDir=archiveDir,
                                         archiveName=archiveName,
                                         outputDir=localOutputDir,
@@ -593,6 +592,7 @@ if __name__ == '__main__':
                 err="subject granularity shall be used when there is no session."
                 raise Exception(err)
             # Extract by session if both subject and session are defined.
+            # @note this provides the global subject's anat/ folder as well!
             else:
                 localOutputDir=f'{workerLocalDir}/smriprep-{subjectId}-{".".join(sessionIds)}'
                 for sessionId in sessionIds:
