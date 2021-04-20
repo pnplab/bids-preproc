@@ -534,12 +534,12 @@ if __name__ == '__main__':
     if not isPipelineDistributed or granularity is not Granularity.SESSION:
         def fetch_smriprep_derivatives1(subjectId: str = None, sessionIds: Set[str] = None):
             return f'{outputDir}/derivatives/smriprep'
-        def cleanup1(subjectId: str = None, sessionIds: Set[str] = None):
+        def fetch_smriprep_derivatives_cleanup1(subjectId: str = None, sessionIds: Set[str] = None):
             # Nothing to cleanup.
             pass
         
         fetch_smriprep_derivatives = fetch_smriprep_derivatives1
-        fetch_smriprep_derivatives.cleanup = cleanup1
+        fetch_smriprep_derivatives.cleanup = fetch_smriprep_derivatives_cleanup1
     # Archive preprocessed anat for faster IO if pipeline is distributed (+ 
     # prevent files from being distributed across multiple LUSTRE slaves and
     # fragmented, which I suspect to cause random bugs + cope with Compute 
@@ -603,7 +603,7 @@ if __name__ == '__main__':
                                             sessionId=sessionId)
             return localOutputDir
 
-        def cleanup2(subjectId: str = None, sessionIds: Set[str] = None):
+        def fetch_smriprep_derivatives_cleanup2(subjectId: str = None, sessionIds: Set[str] = None):
             # Arg check / Edge case.
             if subjectId is None and sessionIds is not None:
                 err = 'smriprep session cleanup requires subject id.'
@@ -629,7 +629,7 @@ if __name__ == '__main__':
             pass
 
         fetch_smriprep_derivatives = fetch_smriprep_derivatives2
-        fetch_smriprep_derivatives.cleanup = cleanup2
+        fetch_smriprep_derivatives.cleanup = fetch_smriprep_derivatives_cleanup2
 
     # List all sessions as (subj, ses) pairs.
     sessionIds = [
