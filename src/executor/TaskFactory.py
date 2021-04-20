@@ -1,38 +1,9 @@
 import itertools
 from typing import Type
-from . import TaskConfig, execute_strcmd, oneliner, dockerize, singularize
+from . import TaskConfig, execute_strcmd, oneliner, dockerize, singularize, \
+              logify, bashify
 from ..path import OutputFile
 from ..cli import VMEngine
-
-
-# @warning
-# set -o pipefail is only compatible with bash, not dash (debian).
-def logify(cmd, logPath):
-    # @warning
-    # relying on `tee` can be/is memory and bandwidth hungry regarding fmriprep
-    # output for instance, as log is transfered (if dask) and stored within
-    # the result object.
-    # return f'''(set -o pipefail && {cmd} 2>&1 | tee "{logPath}")'''
-    return f'''(set -o pipefail && {cmd} 2>&1 > "{logPath}")'''
-
-
-# @warning output cannot be merged into a single.
-def bashify(cmd):
-    # We need heredoc syntax in order to allow inner cmd quotes without
-    # extra escaping. Quotes around __BASH_CMD_END__ allow to selectively
-    # escape from bash dollar interpolation or not.
-    # cf. https://stackoverflow.com/a/27921346/939741
-    #
-    # example input with mixed python / bash interpolation / escaping:
-    # {0} -l "{archiveDir}/{archiveName}" --list-format=normal
-    #     | awk "NR > 2 {{ print \$NF; }}"
-    #     | grep 'sub-'
-    #     | sed -E "s;^sub-([^/]+)/?(ses-([^/]+))?.*;\\1,\\3;g"
-    #     | sed -E "s/,?\$//g"
-    #     | sort | uniq
-    return ('bash <<\'__BASH_CMD_END__\'' '\n'
-            f'{cmd}' '\n'
-            '__BASH_CMD_END__')
 
 
 class TaskFactory:
@@ -66,7 +37,8 @@ class TaskFactory:
             # when relevant.
             cmd = None
             if vmType == VMEngine.NONE:
-		# @warning fmriprep anat fast track fix wont be injected if docker or singularity is not used!
+                # @warning fmriprep anat fast track fix wont be injected if
+                # docker or singularity is not used!
                 cmd = str.format(
                     taskConfig.cmd,
                     taskConfig.raw_executable if '0' not in newKargs else newKargs['0'],
