@@ -111,10 +111,10 @@ if __name__ == '__main__':
             # Weird since resources in #compute allow to specify global or
             # per-task resource allocation.
             extra=['--resources job=1'],  
-            project="def-porban",
-            # Disable worker kill when scheduler is not accessible for > 60
-            # seconds.
-            death_timeout=0,
+            project='def-porban',
+            # Disable worker kill when scheduler is not accessible for > 10h (60
+            # seconds by default).
+            death_timeout=36000,
             memory=f'{memGB} GB',
             walltime=workerWallTime,
             # @warning does it work with '$' embedded ???? -- seems to!!
