@@ -154,10 +154,14 @@ if __name__ == '__main__':
                 'module load singularity'
             ]
         )
-        # Reduces scripts memory allocation from 2 gigs, just allowing a
-        # buffer to prevent memory overhead.
-        print('memGB has been reduced by 2 GBs in order to leave a buffer.')
-        memGB = memGB-2
+        # Reduces scripts memory allocation from 3 gigs, just allowing a
+        # buffer to prevent memory overhead (singularity+fmriprep stopping
+        # consuming memory) or worker error such as:
+        # `slurmstepd: error: Detected 593060 oom-kill event(s) in step
+        # 18446833.batch cgroup. Some of your processes may have been killed by
+        # the cgroup out-of-memory handler.``
+        print('memGB has been reduced by 3 GBs in order to leave a buffer.')
+        memGB = memGB-3
 
         # At least one worker required in order to be able to fetch dataset
         # information.
