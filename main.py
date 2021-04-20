@@ -134,9 +134,8 @@ if __name__ == '__main__':
                 '--lifetime-restart'
             ],
             project='def-porban',
-            # Disable worker kill when scheduler is not accessible for > 10h (60
-            # seconds by default).
-            death_timeout=36000,
+            # Disable worker kill (60 seconds by default).
+            death_timeout=0,
             memory=f'{memGB} GB',
             walltime=workerWallTime,
             # @warning does it work with '$' embedded ???? -- seems to!!
