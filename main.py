@@ -548,7 +548,7 @@ if __name__ == '__main__':
     # extraction.
     elif isPipelineDistributed and granularity is Granularity.SESSION:
         archiveDir = f'{outputDir}/archives/smriprep'
-        archiveName = os.path.basename(datasetDir)
+        archiveName = f'{os.path.basename(datasetDir)}.smriprep'
         derivativesDir=f'{outputDir}/derivatives/smriprep'
 
         didSucceed = scheduler.runTask(
@@ -566,7 +566,7 @@ if __name__ == '__main__':
 
         def fetch_smriprep_derivatives2(subjectId: str = None, sessionIds: Set[str] = None):
             archiveDir = f'{outputDir}/archives/smriprep'
-            archiveName=os.path.basename(datasetDir)
+            archiveName = f'{os.path.basename(datasetDir)}.smriprep'
             localOutputDir=None  # conditionally defined.
 
             # Arg check / Edge case.
