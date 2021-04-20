@@ -133,10 +133,10 @@ if __name__ == '__main__':
                 'module load singularity'
             ]
         )
-        # Reduces scripts memory allocation from one gig, just allowing a
+        # Reduces scripts memory allocation from 2 gigs, just allowing a
         # buffer to prevent memory overhead.
-        print('memGB has been reduced by one GB in order to leave a buffer.')
-        memGB = memGB-1
+        print('memGB has been reduced by 2 GBs in order to leave a buffer.')
+        memGB = memGB-2
 
         # At least one worker required in order to be able to fetch dataset
         # information.
