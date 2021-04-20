@@ -344,6 +344,7 @@ if __name__ == '__main__':
             else:
                 localOutputDir = f'{workerLocalDir}/dataset-{subjectId}-{".".join(sessionIds)}'
                 remove_dir(dirPath=localOutputDir)
+            pass
 
         fetch_dataset = fetch_dataset2
         fetch_dataset.cleanup = cleanup2
@@ -531,9 +532,9 @@ if __name__ == '__main__':
     # archive extraction).
     fetch_smriprep_derivatives = None
     if not isPipelineDistributed or granularity is not Granularity.SESSION:
-        def fetch_smriprep_derivatives1(subjectId: str = None):
+        def fetch_smriprep_derivatives1(subjectId: str = None, sessionIds: Set[str] = None):
             return f'{outputDir}/derivatives/smriprep'
-        def cleanup1(subjectId: str = None):
+        def cleanup1(subjectId: str = None, sessionIds: Set[str] = None):
             # Nothing to cleanup.
             pass
         
@@ -563,35 +564,69 @@ if __name__ == '__main__':
         if not didSucceed:
             sys.exit(-1)
 
-        def fetch_smriprep_derivatives2(subjectId: str = None):
+        def fetch_smriprep_derivatives2(subjectId: str = None, sessionIds: Set[str] = None):
             archiveDir = f'{outputDir}/archives/smriprep'
             archiveName = f'{os.path.basename(datasetDir)}.smriprep'
             localOutputDir=None  # conditionally defined.
 
+            # Arg check / Edge case.
+            if subjectId is None and sessionIds is not None:
+                err = 'dataset session extraction requires subject id.'
+                raise Exception(err)
             # Extract the whole dataset if subject is not defined.
-            if subjectId is None:
+            elif subjectId is None:
                 localOutputDir = f'{workerLocalDir}/smriprep'
                 extract_dataset(archiveDir=archiveDir,
                                 archiveName=archiveName, outputDir=localOutputDir)
-            # Extract by subject otherwise.
-            else:
+            # Extract by subject if session is not defined.
+            elif sessionIds is None:
                 localOutputDir=f'{workerLocalDir}/smriprep-{subjectId}'
                 # @todo check result!
                 extract_dataset_subject(archiveDir=archiveDir,
                                         archiveName=archiveName,
                                         outputDir=localOutputDir,
                                         subjectId=subjectId)
+            # Check sessions are not empty, has pipeline has not been
+            # developed to use session granularity when bids dataset
+            # doesn't contain session.
+            elif len(sessionIds) == 0:
+                err="subject granularity shall be used when there is no session."
+                raise Exception(err)
+            # Extract by session if both subject and session are defined.
+            else:
+                localOutputDir=f'{workerLocalDir}/smriprep-{subjectId}-{".".join(sessionIds)}'
+                for sessionId in sessionIds:
+                    extract_dataset_session(archiveDir=archiveDir,
+                                            archiveName=archiveName,
+                                            outputDir=localOutputDir,
+                                            subjectId=subjectId,
+                                            sessionId=sessionId)
             return localOutputDir
 
-        def cleanup2(subjectId: str = None):
+        def cleanup2(subjectId: str = None, sessionIds: Set[str] = None):
+            # Arg check / Edge case.
+            if subjectId is None and sessionIds is not None:
+                err = 'smriprep session cleanup requires subject id.'
+                raise Exception(err)
             # Cleanup the whole dataset if subject is not defined.
-            if subjectId is None:
+            elif subjectId is None:
                 localOutputDir = f'{workerLocalDir}/smriprep'
                 remove_dir(dirPath=localOutputDir)
-            # Cleanup by subject otherwise.
-            else:
+            # Cleanup by subject if session is not defined.
+            elif sessionIds is None:
                 localOutputDir = f'{workerLocalDir}/smriprep-{subjectId}'
                 remove_dir(dirPath=localOutputDir)
+            # Check sessions are not empty, has pipeline has not been
+            # developed to use session granularity when bids dataset
+            # doesn't contain session.
+            elif len(sessionIds) == 0:
+                err="subject granularity shall be used when there is no session."
+                raise Exception(err)
+            # Cleanup by session if both subject and session are defined.
+            else:
+                localOutputDir = f'{workerLocalDir}/smriprep-{subjectId}-{".".join(sessionIds)}'
+                remove_dir(dirPath=localOutputDir)
+            pass
 
         fetch_smriprep_derivatives = fetch_smriprep_derivatives2
         fetch_smriprep_derivatives.cleanup = cleanup2
@@ -636,7 +671,7 @@ if __name__ == '__main__':
             lambda subjectId, sessionId: fmriprep_session(
                 fetch_executable(FMRIPREP_SESSION),
                 datasetDir=fetch_dataset(subjectId, [sessionId]),
-                anatsDerivativesDir=fetch_smriprep_derivatives(subjectId),
+                anatsDerivativesDir=fetch_smriprep_derivatives(subjectId, [sessionId]),
                 workDir=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}',
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt',
@@ -652,7 +687,7 @@ if __name__ == '__main__':
             lambda didSucceed, subjectId, sessionId: (
                 fetch_executable.cleanup(FMRIPREP_SESSION),
                 fetch_dataset.cleanup(subjectId, [sessionId]),
-                fetch_smriprep_derivatives.cleanup(subjectId),
+                fetch_smriprep_derivatives.cleanup(subjectId, [sessionId]),
                 fetch_mri_templates.cleanup(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 didSucceed and remove_dir(
                     dirPath=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}')
