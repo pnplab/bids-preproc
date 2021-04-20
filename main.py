@@ -84,10 +84,10 @@ if __name__ == '__main__':
         # needed.
         workerWallTimeArray = workerWallTime.split(sep='-')
         workerWallTimeAsSec = 0
-        workerWallTimeAsSec += workerWallTimeArray[0] * 24 * 3600 if len(workerWallTimeArray) == 2 else 0
-        workerWallTimeArray = workerWallTimeArray[0].split(sep=':')
-        workerWallTimeAsSec += workerWallTimeArray[0] * 3600
-        workerWallTimeAsSec += workerWallTimeArray[1] * 60
+        workerWallTimeAsSec += int(workerWallTimeArray[0]) * 24 * 3600 if len(workerWallTimeArray) == 2 else 0
+        workerWallTimeArray = int(workerWallTimeArray[1 if len(workerWallTimeArray) == 2 else 0].split(sep=':'))
+        workerWallTimeAsSec += int(workerWallTimeArray[0]) * 3600
+        workerWallTimeAsSec += int(workerWallTimeArray[1]) * 60
         workerTimeout = min(3600, workerWallTimeAsSec - 3600)
         if len(workerWallTimeArray) == 3:
             workerWallTimeAsSec += workerWallTimeArray[2]
