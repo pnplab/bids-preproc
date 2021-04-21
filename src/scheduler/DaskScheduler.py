@@ -25,7 +25,7 @@ class DaskScheduler(LocalScheduler):
         # Wrap task to dask.
         def blockingTaskFn(*args, **kwargs):
             delayedTaskFn = dask.delayed(mergedTaskAndCleanupFn)
-            delayedResult = delayedTaskFn(*args, **kwargs)
+            delayedResult = delayedTaskFn(*args, dask_key_name=taskName, **kwargs)
             # @warning relying on resources imply we setup available resources
             # on every worker, including those setup through dask LocalCluster
             # or MPI, otherwise task scheduling will get stuck.
@@ -77,15 +77,15 @@ class DaskScheduler(LocalScheduler):
             # Expand list itemId as argument for the function.
             elif isinstance(itemId, collections.Sequence) and not \
                isinstance(itemId, str):
-                jobInstance = delayedTaskFn(*itemId)
+                jobInstance = delayedTaskFn(*itemId, dask_key_name=taskItemName)
                 jobInstances[itemId] = jobInstance
             # Expand dictionnary itemId as argument for the function.
             elif isinstance(itemId, dict):
-                jobInstance = delayedTaskFn(**itemId)
+                jobInstance = delayedTaskFn(dask_key_name=taskItemName, **itemId)
                 jobInstances[itemId] = jobInstance
             # Send itemId as argument for the function.
             else:
-                jobInstance = delayedTaskFn(itemId)
+                jobInstance = delayedTaskFn(itemId, dask_key_name=taskItemName)
                 jobInstances[itemId] = jobInstance
 
         # Compute batch.
