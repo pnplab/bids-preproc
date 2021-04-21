@@ -156,7 +156,9 @@ if __name__ == '__main__':
                 # @todo `module load singularity` out !
                 f'export SINGULARITYENV_TEMPLATEFLOW_HOME="{templateflowDataDirWithinVM}"',
                 'module load singularity'
-            ]
+            ],
+            # Control each worker by an intermediate nanny / monitoring process.
+            nanny=True
         )
         # Reduces scripts memory allocation from 3 gigs, just allowing a
         # buffer to prevent memory overhead (singularity+fmriprep stopping
