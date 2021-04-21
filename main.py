@@ -135,8 +135,9 @@ if __name__ == '__main__':
             ],
             project='def-porban',
             # Disable worker kill (60 seconds by default).
-            # Edit: killing death worker is mandatory, because worker task
-            # stealing is not working!
+            # Edit: killing death worker is mandatory, because living-death
+            # workers prevent task stealing, thus prevent their queued task
+            # from being ever processed.
             # death_timeout=0,
             memory=f'{memGB} GB',
             walltime=workerWallTime,

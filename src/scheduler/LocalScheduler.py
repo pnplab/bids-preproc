@@ -49,7 +49,7 @@ class LocalScheduler:
 
         successfulItemIds = []
         failedItemIds = []
-        for itemId in tqdm(itemIds):
+        for itemId in tqdm(itemIds, position=0):
             didSucceed = None
             # Expand list itemId as argument for the function.
             if isinstance(itemId, collections.Sequence) and not \

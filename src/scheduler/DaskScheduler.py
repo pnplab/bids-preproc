@@ -109,7 +109,7 @@ class DaskScheduler(LocalScheduler):
             futures.values(),
             loop=client.loop,
             with_results=True
-        ), initial=len(successfulItemIds), total=len(itemIds)):
+        ), initial=len(successfulItemIds), total=len(itemIds), position=0):
             itemId = list(futures.keys())[list(futures.values()).index(future)]
             taskItemName = f'{taskName}_{str(itemId)}'
             didSucceed = taskResult.didSucceed
