@@ -135,10 +135,11 @@ if __name__ == '__main__':
             ],
             project='def-porban',
             # Disable worker kill (60 seconds by default).
+            # Edit: seems actually disabled by default.
             # Edit: killing death worker is mandatory, because living-death
             # workers prevent task stealing, thus prevent their queued task
             # from being ever processed.
-            # death_timeout=0,
+            death_timeout=60,
             memory=f'{memGB} GB',
             walltime=workerWallTime,
             # @warning does it work with '$' embedded ???? -- seems to!!
