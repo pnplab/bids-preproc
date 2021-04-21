@@ -68,8 +68,9 @@ class DistributedDataset(LocalDataset):
             dataset = taskFn()
         # Run task remotely.
         else:
-            taskDelayed = dask.delayed(taskFn)
-            taskComputation = daskClient.submit(taskFn, resources={'job': 1})
+            taskComputation = daskClient.submit(taskFn,
+                                                key='list-pybids-dataset',
+                                                resources={'job': 1})
             dataset = taskComputation.result()
 
         return dataset
@@ -129,8 +130,8 @@ class DistributedDataset(LocalDataset):
             dataset = taskFn()
         # Run task remotely.
         else:
-            taskDelayed = dask.delayed(taskFn)
-            taskComputation = daskClient.submit(taskFn, resources={'job': 1})
+            taskComputation = daskClient.submit(taskFn, key='list-dar-dataset',
+                                                resources={'job': 1})
             dataset = taskComputation.result()
 
         return dataset
