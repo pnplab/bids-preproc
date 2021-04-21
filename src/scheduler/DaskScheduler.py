@@ -106,7 +106,10 @@ class DaskScheduler(LocalScheduler):
 
         # Retrieve and process result progressively.
         for future, taskResult in tqdm(dask.distributed.as_completed(
-        futures.values(), loop=client.loop, with_results=True)):
+            futures.values(),
+            loop=client.loop,
+            with_results=True
+        ), total=len(futures)):
             itemId = list(futures.keys())[list(futures.values()).index(future)]
             taskItemName = f'{taskName}_{str(itemId)}'
             didSucceed = taskResult.didSucceed
