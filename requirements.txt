@@ -4,3 +4,4 @@ sarge
 pybids
 dask_jobqueue
 dask_mpi
+tqdm
