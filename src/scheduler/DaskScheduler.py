@@ -109,14 +109,14 @@ class DaskScheduler(LocalScheduler):
             futures.values(),
             loop=client.loop,
             with_results=True
-        ), initial=len(successfulItemIds), total=len(itemIds), position=0):
+        ), initial=len(successfulItemIds), total=len(itemIds)):
             itemId = list(futures.keys())[list(futures.values()).index(future)]
             taskItemName = f'{taskName}_{str(itemId)}'
             didSucceed = taskResult.didSucceed
             returnCode = taskResult.returnCode
 
             # Log success/failure.
-            print(f'Task {taskItemName} {"succeeded" if didSucceed else "failed"}.')
+            tqdm.write(f'Task {taskItemName} {"succeeded" if didSucceed else "failed"}.')
 
             # Update task cache.
             cache.writeTaskCache(taskItemName, didSucceed, returnCode)

@@ -16,12 +16,12 @@ class LocalScheduler:
         # Bypass task if it has already run successfully.
         if self.didTaskSucceed(taskName):
             # Log.
-            print(f'Task {taskName} already successfully executed.')
+            tqdm.write(f'Task {taskName} already successfully executed.')
             return True
         # Run task for the first time or again if it failed last time.
         else:
             # Log.
-            print(f'Task {taskName} starting.')
+            tqdm.write(f'Task {taskName} starting.')
 
             # Run task.
             taskResult = taskFn(*args, **kwargs)
@@ -34,7 +34,7 @@ class LocalScheduler:
             # Log.
             doneMsg = f'Task {taskName} {"succeeded" if didSucceed else "failed"} \
             (exit code {returnCode}).'.replace('    ', '')
-            print(doneMsg)
+            tqdm.write(doneMsg)
 
             # Run cleanup.
             if cleanupFn is not None:
@@ -49,7 +49,7 @@ class LocalScheduler:
 
         successfulItemIds = []
         failedItemIds = []
-        for itemId in tqdm(itemIds, position=0):
+        for itemId in tqdm(itemIds):
             didSucceed = None
             # Expand list itemId as argument for the function.
             if isinstance(itemId, collections.Sequence) and not \

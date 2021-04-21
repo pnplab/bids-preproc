@@ -4,4 +4,4 @@ sarge
 pybids
 dask_jobqueue
 dask_mpi
-tqdm
+tqdm==4.19.4
