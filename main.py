@@ -135,7 +135,9 @@ if __name__ == '__main__':
             ],
             project='def-porban',
             # Disable worker kill (60 seconds by default).
-            death_timeout=0,
+            # Edit: killing death worker is mandatory, because worker task
+            # stealing is not working!
+            # death_timeout=0,
             memory=f'{memGB} GB',
             walltime=workerWallTime,
             # @warning does it work with '$' embedded ???? -- seems to!!
