@@ -1,5 +1,6 @@
 import collections  # for sequence type unpacking in higher order functions
 from typing import Set
+from tqdm import tqdm
 import dask
 from . import LocalScheduler
 
@@ -101,12 +102,12 @@ class DaskScheduler(LocalScheduler):
         for itemId, jobInstance in jobInstances.items():
             future = client.compute(jobInstance, resources={'job': 1},
                                     scheduler='processes')
+                                    client.submit(mergedTaskAndCleanupFn, )
             futures[itemId] = future
 
         # Retrieve and process result progressively.
-        for future, taskResult in dask.distributed.as_completed(futures.values(),
-                                                                loop=client.loop,
-                                                                with_results=True):
+        for future, taskResult in dask.distributed.as_completed(
+        tqdm(futures.values()), loop=client.loop, with_results=True):
             itemId = list(futures.keys())[list(futures.values()).index(future)]
             taskItemName = f'{taskName}_{str(itemId)}'
             didSucceed = taskResult.didSucceed

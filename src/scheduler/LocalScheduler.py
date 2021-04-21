@@ -1,8 +1,9 @@
 import collections  # for sequence type unpacking in higher order functions
 # import sarge
 # import time  # for sleep to avoid infinite loop while fetching run log
-from src.tasks_history import TasksHistory
 from typing import Set
+from tqdm import tqdm
+from src.tasks_history import TasksHistory
 
 
 class LocalScheduler:
@@ -48,7 +49,7 @@ class LocalScheduler:
 
         successfulItemIds = []
         failedItemIds = []
-        for itemId in itemIds:
+        for itemId in tqdm(itemIds):
             didSucceed = None
             # Expand list itemId as argument for the function.
             if isinstance(itemId, collections.Sequence) and not \
