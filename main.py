@@ -661,14 +661,20 @@ if __name__ == '__main__':
 
     # FMRiPrep: func by subjects [case A].
     if enableFMRiPrep and granularity is Granularity.SESSION:
-        # @todo copy smriprep's subject derivatives to the compute node etc.
-        # @todo copy templateflow data to the compute node etc.
         successfulSessionIds, failedSessionIds = scheduler.batchTask(
             'fmriprep_func',
             lambda subjectId, sessionId: fmriprep_session(
                 fetch_executable(FMRIPREP_SESSION),
                 datasetDir=fetch_dataset(subjectId, [sessionId]),
-                anatsDerivativesDir=fetch_smriprep_derivatives(subjectId, [sessionId]),
+                # @note fetch_smriprep_derivatives provides the global
+                # subject's anat/, folder as well! In case the subject has only
+                # acquired a single T1 , fmriprep doesn't generate a global
+                # anat/ folder, as there is no merged template being processed.
+                # Thus we have to provide the only anat session available
+                # instead, which is not necessarily the same session as the one
+                # being currently processing for func.
+                anatsDerivativesDir=fetch_smriprep_derivatives(subjectId, [
+                    dataset.getAnatSessionIdsBySubjectId(subjectId)[:1]]),
                 workDir=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}',
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt',
@@ -684,7 +690,8 @@ if __name__ == '__main__':
             lambda didSucceed, subjectId, sessionId: (
                 fetch_executable.cleanup(FMRIPREP_SESSION),
                 fetch_dataset.cleanup(subjectId, [sessionId]),
-                fetch_smriprep_derivatives.cleanup(subjectId, [sessionId]),
+                fetch_smriprep_derivatives.cleanup(subjectId, [
+                    dataset.getAnatSessionIdsBySubjectId(subjectId)[:1]]),
                 fetch_mri_templates.cleanup(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 didSucceed and remove_dir(
                     dirPath=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}')
