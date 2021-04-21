@@ -166,8 +166,10 @@ if __name__ == '__main__':
         # `slurmstepd: error: Detected 593060 oom-kill event(s) in step
         # 18446833.batch cgroup. Some of your processes may have been killed by
         # the cgroup out-of-memory handler.``
-        print('memGB has been reduced by 3 GBs in order to leave a buffer.')
+        print('memGB has been reduced by 3 GBs, in order to leave a buffer.')
         memGB = memGB-3
+        print('nproc has been reduced by 1, in order to leave a buffer.')
+        nproc = nproc-1
 
         # At least one worker required in order to be able to fetch dataset
         # information.
