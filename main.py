@@ -673,8 +673,8 @@ if __name__ == '__main__':
                 # Thus we have to provide the only anat session available
                 # instead, which is not necessarily the same session as the one
                 # being currently processing for func.
-                anatsDerivativesDir=fetch_smriprep_derivatives(subjectId, [
-                    dataset.getAnatSessionIdsBySubjectId(subjectId)[:1]]),
+                anatsDerivativesDir=fetch_smriprep_derivatives(subjectId,
+                    dataset.getAnatSessionIdsBySubjectId(subjectId)[:1]),
                 workDir=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}',
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt',
@@ -690,8 +690,8 @@ if __name__ == '__main__':
             lambda didSucceed, subjectId, sessionId: (
                 fetch_executable.cleanup(FMRIPREP_SESSION),
                 fetch_dataset.cleanup(subjectId, [sessionId]),
-                fetch_smriprep_derivatives.cleanup(subjectId, [
-                    dataset.getAnatSessionIdsBySubjectId(subjectId)[:1]]),
+                fetch_smriprep_derivatives.cleanup(subjectId,
+                    dataset.getAnatSessionIdsBySubjectId(subjectId)[:1]),
                 fetch_mri_templates.cleanup(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 didSucceed and remove_dir(
                     dirPath=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}')
