@@ -102,7 +102,6 @@ class DaskScheduler(LocalScheduler):
         for itemId, jobInstance in jobInstances.items():
             future = client.compute(jobInstance, resources={'job': 1},
                                     scheduler='processes')
-                                    client.submit(mergedTaskAndCleanupFn, )
             futures[itemId] = future
 
         # Retrieve and process result progressively.
