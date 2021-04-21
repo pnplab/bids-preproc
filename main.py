@@ -265,13 +265,13 @@ if __name__ == '__main__':
     effectiveWorkerCount = workerCount
     if workerCount == -1:
         effectiveWorkerCount = len(dataset.getSubjectIds())
+    # Scale slurm worker count.
     # Do not launch more worker than what we can use at the moment (thus max
     # one per subject). This might be upscaled later on.
-    else:
-        effectiveWorkerCount = min(workerCount, len(dataset.getSubjectIds()))
-    # Scale slurm worker count.
+    # @note `adapt` instead of scale should allow to automatically restart dead
+    # workers. cf. https://stackoverflow.com/a/61295019/939741
     if executor is Executor.SLURM:
-        cluster.scale(effectiveWorkerCount)
+        cluster.adapt(minimum_jobs=1, maximum_jobs=effectiveWorkerCount)
 
     # Setup dataset retrieval method (either path, or archive extraction).
     fetch_dataset = None
@@ -640,13 +640,6 @@ if __name__ == '__main__':
         for subjectId in subjectIds
         for sessionId in dataset.getSessionIdsBySubjectId(subjectId)
     ]
-
-    # Upscale the worker count if user requested an higher number, and there
-    # are more parallelly processable tasks than subjects [case A].
-    if workerCount != -1 and workerCount != effectiveWorkerCount and \
-    granularity is Granularity.SESSION and executor is Executor.SLURM:
-        effectiveWorkerCount = min(workerCount, len(sessionIds))
-        cluster.scale(effectiveWorkerCount)
 
     # FMRiPrep: generate sessions' func file filters [case A].
     if enableFMRiPrep and granularity is Granularity.SESSION:
