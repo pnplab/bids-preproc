@@ -1,6 +1,7 @@
 import sys  # for python version check + sys.exit
 import os  # for cache file delete
 import shutil  # for cache dir delete
+import threading  # for dask stalled workers periodic cleanup
 import dask.distributed  # for MT
 import dask_jobqueue
 import dask_mpi
@@ -177,6 +178,25 @@ if __name__ == '__main__':
         client = dask.distributed.Client(cluster)
         scheduler = DaskScheduler(
             f'{outputDir}/.task_cache.csv', client)
+
+        # Periodically check worker are still alive, and restart them if not.
+        # @note death_timeout arg doesn't work, as it restart worker from
+        # within the worker, if it can't access the scheduler. Here we kill the
+        # worker from the scheduler if we don't get any heartbeat. This prevents
+        # stalled worker from accumulating the job requests while preventing the
+        # other workers to steal the jobs.
+        stalledWorkerTimeout = 120  # in sec.
+        def killStalledWorkers():
+            # Retrieve stalled workers.
+            stalledWorkerAddresses = []
+            for worker in client.cluster.scheduler.workers:
+                workerAddress = worker.address
+                last_seen = worker.last_seen  # real number in second as timestamp.
+                if last_seen > 60:  # most heartbeat are available within a second.
+                    stalledWorkerAddresses.append(workerAddress)
+            # Kill the stalled workers.
+            client.cluster.scheduler.retire_workers(workers=stalledWorkerAddresses, remove=True, close_workers=True)
+        threading.Timer(stalledWorkerTimeout, killStalledWorkers).start()
     elif executor is Executor.MPI:
         # Setup max job per worker, through worker resource limitation
         # cf. https://distributed.dask.org/en/latest/resources.html#specifying-resources
