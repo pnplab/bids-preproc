@@ -194,10 +194,10 @@ if __name__ == '__main__':
             # Retrieve stalled workers.
             stalledWorkerAddresses = []
             workers = client.scheduler_info()['workers']
-            for idx, worker in workers.items():
-                workerAddress = worker.address
-                last_seen = worker.last_seen  # real number in second as timestamp.
-                if time.time() - last_seen > 60:  # most heartbeat are available within a second.
+            for key, worker in workers.items():
+                workerAddress = key
+                lastSeen = worker['last-seen']  # real number in second as timestamp.
+                if time.time() - lastSeen > 60:  # most heartbeat are available within a second.
                     stalledWorkerAddresses.append(workerAddress)
 
             # Log stalled workers
