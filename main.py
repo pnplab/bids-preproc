@@ -187,6 +187,7 @@ if __name__ == '__main__':
         # worker from the scheduler if we don't get any heartbeat. This prevents
         # stalled worker from accumulating the job requests while preventing the
         # other workers to steal the jobs.
+        # @warning supposedly thread friendly, shouldn't cause issue.
         stalledWorkerTimeout = 120  # in sec.
         def killStalledWorkers():
             # Retrieve stalled workers.
