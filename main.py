@@ -168,8 +168,6 @@ if __name__ == '__main__':
         # the cgroup out-of-memory handler.``
         print('memGB has been reduced by 3 GBs, in order to leave a buffer.')
         memGB = memGB-3
-        print('nproc has been reduced by 1, in order to leave a buffer.')
-        nproc = nproc-1
 
         # At least one worker required in order to be able to fetch dataset
         # information.
