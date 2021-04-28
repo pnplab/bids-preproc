@@ -159,7 +159,9 @@ if __name__ == '__main__':
                 'module load singularity'
             ],
             # Control each worker by an intermediate nanny / monitoring process.
-            nanny=True
+            # Edit: disabled, as found erratic claim it may solve worker timeout
+            # issues we have. cf. https://github.com/dask/dask-jobqueue/issues/20
+            nanny=False
         )
         # Reduces scripts memory allocation from 3 gigs, just allowing a
         # buffer to prevent memory overhead (singularity+fmriprep stopping
