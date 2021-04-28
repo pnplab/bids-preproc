@@ -197,9 +197,17 @@ if __name__ == '__main__':
                 last_seen = worker.last_seen  # real number in second as timestamp.
                 if last_seen > 60:  # most heartbeat are available within a second.
                     stalledWorkerAddresses.append(workerAddress)
+
+            # Log stalled workers
+            print('killing stalled workers..')
+            print(stalledWorkerAddresses)
+
             # Kill the stalled workers.
             client.cluster.scheduler.retire_workers(workers=stalledWorkerAddresses, remove=True, close_workers=True)
-        threading.Timer(stalledWorkerTimeout, killStalledWorkers).start()
+
+            # Recursively execute in 2 minutes.
+            threading.Timer(stalledWorkerTimeout, killStalledWorkers).start()
+        killStalledWorkers()
     elif executor is Executor.MPI:
         # Setup max job per worker, through worker resource limitation
         # cf. https://distributed.dask.org/en/latest/resources.html#specifying-resources
