@@ -192,7 +192,8 @@ if __name__ == '__main__':
         def killStalledWorkers():
             # Retrieve stalled workers.
             stalledWorkerAddresses = []
-            for worker in client.cluster.scheduler.workers:
+            workers = client.scheduler_info()['workers']
+            for worker in workers:
                 workerAddress = worker.address
                 last_seen = worker.last_seen  # real number in second as timestamp.
                 if last_seen > 60:  # most heartbeat are available within a second.
@@ -203,7 +204,7 @@ if __name__ == '__main__':
             print(stalledWorkerAddresses)
 
             # Kill the stalled workers.
-            client.cluster.scheduler.retire_workers(workers=stalledWorkerAddresses, remove=True, close_workers=True)
+            client.retire_workers(workers=stalledWorkerAddresses, remove=True, close_workers=True)
 
             # Recursively execute in 2 minutes.
             threading.Timer(stalledWorkerTimeout, killStalledWorkers).start()
