@@ -2,6 +2,7 @@ import sys  # for python version check + sys.exit
 import os  # for cache file delete
 import shutil  # for cache dir delete
 import threading  # for dask stalled workers periodic cleanup
+import time  # for dask stalled workers timestamp comparison
 import dask.distributed  # for MT
 import dask_jobqueue
 import dask_mpi
@@ -196,12 +197,13 @@ if __name__ == '__main__':
             for idx, worker in workers:
                 workerAddress = worker.address
                 last_seen = worker.last_seen  # real number in second as timestamp.
-                if last_seen > 60:  # most heartbeat are available within a second.
+                if time.time() - last_seen > 60:  # most heartbeat are available within a second.
                     stalledWorkerAddresses.append(workerAddress)
 
             # Log stalled workers
-            print('killing stalled workers..')
-            print(stalledWorkerAddresses)
+            if len(stalledWorkerAddresses) > 0:
+                print('killing stalled workers:')
+                print(stalledWorkerAddresses)
 
             # Kill the stalled workers.
             client.retire_workers(workers=stalledWorkerAddresses, remove=True, close_workers=True)
