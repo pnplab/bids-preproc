@@ -196,7 +196,7 @@ if __name__ == '__main__':
             workers = client.scheduler_info()['workers']
             for key, worker in workers.items():
                 workerAddress = key
-                lastSeen = worker['last-seen']  # real number in second as timestamp.
+                lastSeen = worker['last_seen']  # real number in second as timestamp.
                 if time.time() - lastSeen > 60:  # most heartbeat are available within a second.
                     stalledWorkerAddresses.append(workerAddress)
 
