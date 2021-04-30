@@ -190,15 +190,24 @@ if __name__ == '__main__':
         # stalled worker from accumulating the job requests while preventing the
         # other workers to steal the jobs.
         # @warning supposedly thread friendly, shouldn't cause issue.
-        stalledWorkerTimeout = 120  # in sec.
-        def killStalledWorkers():
+        def loopThroughStalledWorkersAndKill():
+            # Recursively execute in 2 minutes.
+            # @warning #retire_workers might timeout, better set this
+            # function's recursion at the beggining of its definition rather
+            # than at the end.
+            checkupTiming = 120  # in sec.
+            threading.Timer(checkupTiming, loopThroughStalledWorkersAndKill).start()
+
             # Retrieve stalled workers.
+            deathTimeout = 60  # in sec
             stalledWorkerAddresses = []
             workers = client.scheduler_info()['workers']
             for key, worker in workers.items():
                 workerAddress = key
-                lastSeen = worker['last_seen']  # real number in second as timestamp.
-                if time.time() - lastSeen > 60:  # most heartbeat are available within a second.
+                # @note timestamp as real number in seconds.
+                lastSeen = worker['last_seen']
+                # @note most heartbeat are available within a second.
+                if time.time() - lastSeen > deathTimeout:
                     stalledWorkerAddresses.append(workerAddress)
 
             # Log stalled workers
@@ -207,11 +216,25 @@ if __name__ == '__main__':
                 print(stalledWorkerAddresses)
 
             # Kill the stalled workers.
-            client.retire_workers(workers=stalledWorkerAddresses, remove=True, close_workers=True)
+            # @note remove: bool - Whether or not to remove the worker metadata
+            # immediately or else wait for the worker to contact us.
+            # cf. https://distributed.dask.org/en/latest/_modules/distributed/scheduler.html#Scheduler.retire_workers
+            # We set to false as we have had instances where worker is not
+            # effectively killed, and still visible within the dask dashboard
+            # while #scheduler_info metadata are no longer there, so no new
+            # attempt are done.
+            # Even though remove is set to false, remove will still be called
+            # and awaited when close workers is called at the end.
+            if len(stalledWorkerAddresses) > 0:
+                client.retire_workers(workers=stalledWorkerAddresses,
+                                      remove=False, close_workers=True)
 
-            # Recursively execute in 2 minutes.
-            threading.Timer(stalledWorkerTimeout, killStalledWorkers).start()
-        killStalledWorkers()
+            # # Kill worker through CLI slurm instead of dask.
+            # workerIp = '' # @todo parse IP from workerAddress
+            # result = execute_cmd(f'''nslookup {workerIp} | awk '{{ print $4 }}' | sed -E 's/^([^.]+).*/\1/' ''')
+            # workerNode = result.stdout
+            # execute_cmd(f'''sq | grep {workerNode} | awk '{{ print $1 }}' | xargs scancel''')
+        loopThroughStalledWorkersAndKill()
     elif executor is Executor.MPI:
         # Setup max job per worker, through worker resource limitation
         # cf. https://distributed.dask.org/en/latest/resources.html#specifying-resources
