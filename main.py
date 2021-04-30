@@ -249,15 +249,6 @@ if __name__ == '__main__':
     print(client)
 
     # Generate tasks.
-    copy_file = TaskFactory.generate(VMEngine.NONE, COPY_FILE)
-    copy_dir = TaskFactory.generate(VMEngine.NONE, COPY_DIR)
-    remove_file = TaskFactory.generate(VMEngine.NONE, REMOVE_FILE)
-    remove_dir = TaskFactory.generate(VMEngine.NONE, REMOVE_DIR)
-    archive_dataset = TaskFactory.generate(VMEngine.NONE, ARCHIVE_DATASET)  # distributed only / no singularity/docker image available.
-    extract_dataset = TaskFactory.generate(VMEngine.NONE, EXTRACT_DATASET)  # distributed only / no singularity/docker image available.
-    extract_dataset_subject = TaskFactory.generate(VMEngine.NONE, EXTRACT_DATASET_SUBJECT)  # distributed only / no singularity/docker image available.
-    extract_dataset_session = TaskFactory.generate(VMEngine.NONE, EXTRACT_DATASET_SESSION)  # distributed only / no singularity/docker image available.
-    list_archive_sessions = TaskFactory.generate(VMEngine.NONE, LIST_ARCHIVE_SESSIONS) # distributed only / no singularity/docker image available.
     bids_validator = TaskFactory.generate(vmEngine, BIDS_VALIDATOR)
     mriqc_subject = TaskFactory.generate(vmEngine, MRIQC_SUBJECT)
     mriqc_group = TaskFactory.generate(vmEngine, MRIQC_GROUP)
@@ -265,12 +256,21 @@ if __name__ == '__main__':
     fmriprep_subject = TaskFactory.generate(vmEngine, FMRIPREP_SUBJECT)
     fmriprep_session_filter = TaskFactory.generate(VMEngine.NONE, FMRIPREP_SESSION_FILTER)  # no singularity/docker image available for printf.
     fmriprep_session = TaskFactory.generate(vmEngine, FMRIPREP_SESSION)
+    # @note distributed pipeline only / no singularity/docker image available.
+    copy_file = TaskFactory.generate(VMEngine.NONE, COPY_FILE)
+    copy_dir = TaskFactory.generate(VMEngine.NONE, COPY_DIR)
+    remove_file = TaskFactory.generate(VMEngine.NONE, REMOVE_FILE)
+    remove_dir = TaskFactory.generate(VMEngine.NONE, REMOVE_DIR)
+    archive_dataset = TaskFactory.generate(VMEngine.NONE, ARCHIVE_DATASET)
+    extract_dataset = TaskFactory.generate(VMEngine.NONE, EXTRACT_DATASET)
+    extract_dataset_subject = TaskFactory.generate(VMEngine.NONE, EXTRACT_DATASET_SUBJECT)
+    extract_dataset_session = TaskFactory.generate(VMEngine.NONE, EXTRACT_DATASET_SESSION)
+    list_archive_sessions = TaskFactory.generate(VMEngine.NONE, LIST_ARCHIVE_SESSIONS)
 
     # Archive dataset for faster IO if pipeline is distributed (+ prevent files
     # from being distributed across multiple LUSTRE slaves and fragmented,
     # which I suspect to cause random bugs + cope with Compute Canada file 
     # cap).
-    # @todo remove dual archiveName/Dir with pipeline.
     if isPipelineDistributed:
         archiveDir = f'{outputDir}/archives'
         archiveName = os.path.basename(datasetDir)
@@ -296,21 +296,21 @@ if __name__ == '__main__':
         dataset = LocalDataset(datasetDir, pybidsCache)
     # Wrap inside distributed pipeline, in order to prevent issues due to
     # distributed file system (missing subject ids, etc). These issues are
-    # speculated, although they seems to have been appearing randomly, until I
-    # stopped relying on LUSTRE.
+    # speculated, although they seems to have appeared randomly until I stopped
+    # relying on LUSTRE.
     elif isPipelineDistributed:
         # Retrieve dataset info on local node.
-        # @warning @todo doesn't work on dataset > 300GO as they can't be
-        # extracted from local node...
-        # > need to write a drive
         archiveDir = f'{outputDir}/archives'
         archiveName = os.path.basename(datasetDir)
+        # @warning @todo doesn't work on dataset > 300GO as they can't be
+        # extracted from local node...
         # dataset = DistributedDataset.loadFromArchiveWithPyBids(client,
         #                                                        extract_dataset,
         #                                                        archiveDir,
         #                                                        archiveName,
         #                                                        workerLocalDir)
 
+        # @note this works from scheduling node (no dataset copy/extraction).
         dataset = DistributedDataset.loadFromArchiveWithDar(client,
                                                             list_archive_sessions,
                                                             archiveDir,
@@ -466,13 +466,13 @@ if __name__ == '__main__':
             return templateflowDataDir
         else:
             origDirPath = templateflowDataDir
-            origDirName = os.path.basename(templateflowDataDir)
+            origDirName = os.path.basename(origDirPath)
             destDirPath = f'{workerLocalDir}/{origDirName}{suffix}'
             copy_dir(sourcePath=origDirPath, destPath=destDirPath)
             return destDirPath
     def fetch_mri_templates_cleanup(suffix: str = ''):
         origDirPath = templateflowDataDir
-        origDirName = os.path.basename(templateflowDataDir)
+        origDirName = os.path.basename(origDirPath)
         destDirPath = f'{workerLocalDir}/{origDirName}{suffix}'
         remove_dir(dirPath=destDirPath)
     fetch_mri_templates.cleanup = fetch_mri_templates_cleanup
@@ -690,7 +690,6 @@ if __name__ == '__main__':
             else:
                 localOutputDir = f'{workerLocalDir}/smriprep-{subjectId}-{".".join(sessionIds)}'
                 remove_dir(dirPath=localOutputDir)
-            pass
 
         fetch_smriprep_derivatives = fetch_smriprep_derivatives2
         fetch_smriprep_derivatives.cleanup = fetch_smriprep_derivatives_cleanup2
