@@ -458,6 +458,26 @@ if __name__ == '__main__':
             remove_file(filePath=tmpImagePath)
     fetch_executable.cleanup = fetch_executable_cleanup
 
+    # Setup fastrack fix source code retrival method.
+    # @waning we suspect this might be the cause of state D (uninteruptible
+    # sleep) of fmriprep child processes such as mcflirt, which also cause
+    # `htop` and `ps aux` to be failing.
+    def fetch_fastrack_fix_dir(suffix: str = ''):
+        if not isPipelineDistributed:
+            return fasttrackFixDir
+        else:
+            origDirPath = fasttrackFixDir
+            origDirName = os.path.basename(origDirPath)
+            destDirPath = f'{workerLocalDir}/{origDirName}{suffix}'
+            copy_dir(sourcePath=origDirPath, destPath=destDirPath)
+            return destDirPath
+    def fetch_fastrack_fix_dir_cleanup(suffix: str = ''):
+        origDirPath = fasttrackFixDir
+        origDirName = os.path.basename(origDirPath)
+        destDirPath = f'{workerLocalDir}/{origDirName}{suffix}'
+        remove_dir(dirPath=destDirPath)
+    fetch_fastrack_fix_dir.cleanup = fetch_fastrack_fix_dir_cleanup
+
     # Setup T1 template retrieval method.
     # @warning ensure output paths are all different if you run pipeline as
     # distributed.
@@ -744,7 +764,7 @@ if __name__ == '__main__':
                 memMB=memGB*1000, # not 1024 / GiB
                 subjectId=subjectId,
                 sessionId=sessionId,
-                fasttrackFixDir=fasttrackFixDir
+                fasttrackFixDir=fetch_fastrack_fix_dir(suffix=f'_fmriprep_func_{subjectId}_{sessionId}')
             ),
             lambda didSucceed, subjectId, sessionId: (
                 fetch_executable.cleanup(FMRIPREP_SESSION),
@@ -752,6 +772,7 @@ if __name__ == '__main__':
                 fetch_smriprep_derivatives.cleanup(subjectId,
                     dataset.getAnatSessionIdsBySubjectId(subjectId)[:1]),
                 fetch_mri_templates.cleanup(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
+                fetch_fastrack_fix_dir.cleanup(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 didSucceed and remove_dir(
                     dirPath=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}')
             ),
