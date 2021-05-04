@@ -458,6 +458,23 @@ if __name__ == '__main__':
             remove_file(filePath=tmpImagePath)
     fetch_executable.cleanup = fetch_executable_cleanup
 
+    # Setup freesurfer license retrieval method.
+    def fetch_freesurfer_license(suffix: str = ''):
+        if not isPipelineDistributed:
+            return './licenses/freesurfer.txt'
+        else:
+            origFilePath = './licenses/freesurfer.txt'
+            origFileName = os.path.basename(origFilePath)
+            destFilePath = f'{workerLocalDir}/{origFileName}{suffix}'
+            copy_file(sourcePath=origFilePath, destPath=destFilePath)
+            return destFilePath
+    def fetch_freesurfer_license_cleanup(suffix: str = ''):
+        origFilePath = './licenses/freesurfer.txt'
+        origFileName = os.path.basename(origFilePath)
+        destFilePath = f'{workerLocalDir}/{origFileName}{suffix}'
+        remove_file(filePath=destFilePath)
+    fetch_freesurfer_license.cleanup = fetch_freesurfer_license_cleanup
+
     # Setup fastrack fix source code retrival method.
     # @waning we suspect this might be the cause of state D (uninteruptible
     # sleep) of fmriprep child processes such as mcflirt, which also cause
@@ -757,7 +774,7 @@ if __name__ == '__main__':
                 workDir=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}',
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
                 logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt',
-                freesurferLicenseFile='./licenses/freesurfer.txt',
+                freesurferLicenseFile=fetch_freesurfer_license(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 templateflowDataDir=fetch_mri_templates(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 bidsFilterFile=f'{outputDir}/filefilters/fmriprep/func/sub-{subjectId}/ses-{sessionId}/filter.json',  # @todo remove func -- ? why?
                 nproc=nproc,
@@ -771,6 +788,7 @@ if __name__ == '__main__':
                 fetch_dataset.cleanup(subjectId, [sessionId]),
                 fetch_smriprep_derivatives.cleanup(subjectId,
                     dataset.getAnatSessionIdsBySubjectId(subjectId)[:1]),
+                fetch_freesurfer_license.cleanup(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 fetch_mri_templates.cleanup(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 fetch_fastrack_fix_dir.cleanup(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 didSucceed and remove_dir(
