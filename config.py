@@ -334,6 +334,17 @@ FMRIPREP_SESSION_FILTER = TaskConfig(
     }
 )
 
+# @note on some workers, some of the fmriprep processes (ie. mcflirt/fslsplit)
+# hangs with 0% CPU and htop D flag (uninterruptible process). Might be due to
+# memory overload, cf. https://github.com/nipreps/fmriprep/issues/1045, even
+# though weird has we already inject 4GO per cpu, which is twice what 
+# fmriprep recommands (although no info about swap), and this is inner per-task
+# processing,
+# We thus use the --low-mem flag which swaps work files to disk - should work
+# nice with ssds local processing. We've also reduced logging to minimun
+# because it might be a bottleneck has it's recorded not on the local ssd but
+# the network file system, even though mcflirt/fslsplit don't seem to pipe to
+# this log.
 FMRIPREP_SESSION = TaskConfig(
     raw_executable='fmriprep',
     singularity_image='../singularity-images/fmriprep-20.2.1.simg',
@@ -347,7 +358,7 @@ FMRIPREP_SESSION = TaskConfig(
             --ignore slicetiming
             --nprocs {nproc}
             --mem-mb {memMB}
-            -vvvv
+            -v
             --fs-no-reconall
             --fs-license "{freesurferLicenseFile}"
             --anat-derivatives "{anatsDerivativesDir}"
@@ -357,6 +368,7 @@ FMRIPREP_SESSION = TaskConfig(
             participant
             --participant-label "{subjectId}"
             --bids-filter-file "{bidsFilterFile}"
+            --low-mem
     ''',
     # Map paths to vm volumes using argument decorators.
     decorators={
