@@ -773,7 +773,8 @@ if __name__ == '__main__':
                     dataset.getAnatSessionIdsBySubjectId(subjectId)[:1]),
                 workDir=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}',
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
-                logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt',
+                # @warning long-running file descriptor, better not handle on network file system.
+                logFile=f'{workDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt',
                 freesurferLicenseFile=fetch_freesurfer_license(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 templateflowDataDir=fetch_mri_templates(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 bidsFilterFile=f'{outputDir}/filefilters/fmriprep/func/sub-{subjectId}/ses-{sessionId}/filter.json',  # @todo remove func -- ? why?
@@ -788,6 +789,10 @@ if __name__ == '__main__':
                 fetch_dataset.cleanup(subjectId, [sessionId]),
                 fetch_smriprep_derivatives.cleanup(subjectId,
                     dataset.getAnatSessionIdsBySubjectId(subjectId)[:1]),
+                copy_file(
+                    sourcePath=f'{workDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt',
+                    destPath=f'{outputDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt'),
+                # remove_file(filePath=f'{workDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt'),  # commented, as might be done parallely to copy_file
                 fetch_freesurfer_license.cleanup(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 fetch_mri_templates.cleanup(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
                 fetch_fastrack_fix_dir.cleanup(suffix=f'_fmriprep_func_{subjectId}_{sessionId}'),
