@@ -56,6 +56,7 @@ if __name__ == '__main__':
     templateflowDataDirWithinVM = '/v_templateflowDataDir'  # check _volume_mapping.py file
     print(f'nproc: {nproc}')
     print(f'memGB: {memGB}')
+    print('warning: if processes are hanging (D-state uninterruptible sleep) consider doubling the ram.')
 
     # Reset cache files/folders.
     if reset:
