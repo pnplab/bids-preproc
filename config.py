@@ -254,6 +254,7 @@ SMRIPREP_SUBJECT = TaskConfig(
             "{datasetDir}"
             "{outputDir}"
             participant
+            --low-mem
     ''',
     # Map paths to vm volumes using argument decorators.
     decorators={
@@ -285,6 +286,7 @@ FMRIPREP_SUBJECT = TaskConfig(
             "{outputDir}"
             participant
             --participant-label "{subjectId}"
+            --low-mem
     ''',
     # Map paths to vm volumes using argument decorators.
     decorators={
