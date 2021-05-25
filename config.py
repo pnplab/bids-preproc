@@ -188,7 +188,7 @@ MRIQC_SUBJECT = TaskConfig(
             --no-sub
             --nprocs {nproc}
             --mem_gb {memGB}
-            -vvvv
+            -vvv
             -w "{workDir}"
             "{datasetDir}"
             "{outputDir}"
@@ -214,7 +214,7 @@ MRIQC_GROUP = TaskConfig(
             --no-sub
             --nprocs {nproc}
             --mem_gb {memGB}
-            -vvvv
+            -vvv
             -w "{workDir}"
             "{datasetDir}"
             "{outputDir}"
@@ -248,7 +248,7 @@ SMRIPREP_SUBJECT = TaskConfig(
             --nprocs {nproc}
             --mem-gb {memGB}
             --fs-no-reconall
-            -vvvv
+            -vvv
             --fs-license "{freesurferLicenseFile}"
             -w "{workDir}"
             "{datasetDir}"
@@ -277,7 +277,7 @@ FMRIPREP_SUBJECT = TaskConfig(
             --ignore slicetiming
             --nprocs {nproc}
             --mem-mb {memMB}
-            -vvvv
+            -vvv
             --fs-no-reconall
             --fs-license "{freesurferLicenseFile}"
             -w "{workDir}"
@@ -358,7 +358,7 @@ FMRIPREP_SESSION = TaskConfig(
             --ignore slicetiming
             --nprocs {nproc}
             --mem-mb {memMB}
-            -v
+            -vvv
             --fs-no-reconall
             --fs-license "{freesurferLicenseFile}"
             --anat-derivatives "{anatsDerivativesDir}"
