@@ -829,7 +829,9 @@ if __name__ == '__main__':
         sessionIds = successfulSessionIds
 
     # FMRiPrep: all by subjects [case B].
-    if granularity is Granularity.DATASET or granularity is Granularity.SUBJECT:
+    if enableFMRiPrep and granularity is Granularity.DATASET:
+        print("warning: dataset granularity for fmriprep is not implemented. use subject granularity instead.")
+    elif enableFMRiPrep and granularity is Granularity.SUBJECT:
         successfulSessionIds, failedSessionIds = scheduler.batchTask(
             'fmriprep_all',
             lambda subjectId: fmriprep_subject(
