@@ -287,6 +287,9 @@ if __name__ == '__main__':
             lambda didSucceed: None
         )
         if not didSucceed:
+            # Close dask slurm scheduler + workers.
+            if executor is Executor.SLURM:
+                client.shutdown()
             sys.exit(-1)
 
     # Analyse dataset in order to be able to orchestrate parallel processing
@@ -532,6 +535,9 @@ if __name__ == '__main__':
             )
         )
         if not didSucceed:
+            # Close dask slurm scheduler + workers.
+            if executor is Executor.SLURM:
+                client.shutdown()
             sys.exit(1)
     elif enableBidsValidator and granularity is Granularity.DATASET:
         print("warning: bids validation output stream will be sustained over shared filesystem (lustre?).")
@@ -548,6 +554,9 @@ if __name__ == '__main__':
             )
         )
         if not didSucceed:
+            # Close dask slurm scheduler + workers.
+            if executor is Executor.SLURM:
+                client.shutdown()
             sys.exit(1)
 
     # MRIQC: qc by subjects.
@@ -576,6 +585,9 @@ if __name__ == '__main__':
             subjectIds
         )
         if len(successfulSubjectIds) == 0:
+            # Close dask slurm scheduler + workers.
+            if executor is Executor.SLURM:
+                client.shutdown()
             sys.exit(2)
 
         # Limit next step's subject ids to the one that succeeded MRIQC.
@@ -602,6 +614,9 @@ if __name__ == '__main__':
             )
         )
         if not didSucceed:
+            # Close dask slurm scheduler + workers.
+            if executor is Executor.SLURM:
+                client.shutdown()
             sys.exit(3)
 
     # SMRiPrep: anat by subjects (only when granularity is session, otherwise
@@ -645,6 +660,9 @@ if __name__ == '__main__':
             subjectIds
         )
         if len(successfulSubjectIds) == 0:
+            # Close dask slurm scheduler + workers.
+            if executor is Executor.SLURM:
+                client.shutdown()
             sys.exit(4)
 
         # Limit next step's subject ids to the one that succeeded MRIQC.
@@ -684,6 +702,9 @@ if __name__ == '__main__':
             lambda didSucceed: None
         )
         if not didSucceed:
+            # Close dask slurm scheduler + workers.
+            if executor is Executor.SLURM:
+                client.shutdown()
             sys.exit(-1)
 
         def fetch_smriprep_derivatives2(subjectId: str = None, sessionIds: Set[str] = None):
@@ -774,6 +795,9 @@ if __name__ == '__main__':
             sessionIds
         )
         if len(successfulSessionIds) == 0:
+            # Close dask slurm scheduler + workers.
+            if executor is Executor.SLURM:
+                client.shutdown()
             sys.exit(5)
 
     # FMRiPrep: func by subjects [case A].
@@ -823,6 +847,9 @@ if __name__ == '__main__':
             successfulSessionIds
         )
         if len(successfulSessionIds) == 0:
+            # Close dask slurm scheduler + workers.
+            if executor is Executor.SLURM:
+                client.shutdown()
             sys.exit(6)
 
         # Limit next step's subject/session ids to the successful ones.
@@ -860,4 +887,11 @@ if __name__ == '__main__':
             subjectIds
         )
         if len(successfulSessionIds) == 0:
+            # Close dask slurm scheduler + workers.
+            if executor is Executor.SLURM:
+                client.shutdown()
             sys.exit(7)
+
+    # Close dask slurm scheduler + workers.
+    if executor is Executor.SLURM:
+        client.shutdown()
