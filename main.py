@@ -621,8 +621,8 @@ if __name__ == '__main__':
                 ),
                 workDir=f'{workDir}/smriprep/sub-{subjectId}',
                 outputDir=f'{outputDir}/derivatives',  # /smriprep will be add by the cmd.
-                logFile=f'{outputDir}/log/smriprep/sub-{subjectId}.txt',
-                freesurferLicenseFile='./licenses/freesurfer.txt',
+                logFile=f'{workDir}/log/smriprep/sub-{subjectId}.txt',
+                freesurferLicenseFile=fetch_freesurfer_license(suffix=f'_smriprep_anat_{subjectId}'),
                 templateflowDataDir=fetch_mri_templates(suffix=f'_smriprep_anat_{subjectId}'),
                 nproc=nproc,
                 memGB=memGB,
@@ -634,6 +634,10 @@ if __name__ == '__main__':
                     subjectId,
                     dataset.getAnatSessionIdsBySubjectId(subjectId)[:2]
                 ),
+                copy_file(
+                    sourcePath=f'{workDir}/log/smriprep/sub-{subjectId}.txt',
+                    destPath=f'{outputDir}/log/smriprep/sub-{subjectId}.txt'),
+                fetch_freesurfer_license.cleanup(suffix=f'_smriprep_anat_{subjectId}'),
                 fetch_mri_templates.cleanup(suffix=f'_smriprep_anat_{subjectId}'),
                 didSucceed and remove_dir(
                     dirPath=f'{workDir}/smriprep/sub-{subjectId}')
