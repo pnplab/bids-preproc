@@ -518,7 +518,23 @@ if __name__ == '__main__':
     # BidsValidator.
     # @todo allow per subject bids validation when dataset > available disk
     # space.
-    if enableBidsValidator and granularity is Granularity.DATASET:
+    if enableBidsValidator and granularity is not Granularity.DATASET:
+        print("warning: bids validation input and output streams will occur through shared filesystem (lustre?).")
+        didSucceed = scheduler.runTask(
+            'validate_bids',
+            lambda: bids_validator(
+                fetch_executable(BIDS_VALIDATOR),
+                datasetDir=datasetDir,
+                logFile=f'{outputDir}/log/validate-bids.txt'
+            ),
+            lambda didSucceed: (
+                fetch_executable.cleanup(BIDS_VALIDATOR)
+            )
+        )
+        if not didSucceed:
+            sys.exit(1)
+    elif enableBidsValidator and granularity is Granularity.DATASET:
+        print("warning: bids validation output stream will be sustained over shared filesystem (lustre?).")
         didSucceed = scheduler.runTask(
             'validate_bids',
             lambda: bids_validator(
