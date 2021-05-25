@@ -839,16 +839,20 @@ if __name__ == '__main__':
                 datasetDir=fetch_dataset(subjectId),
                 workDir=f'{workDir}/fmriprep/sub-{subjectId}',
                 outputDir=f'{outputDir}/derivatives',  # /fmriprep will be add by the cmd.
-                logFile=f'{outputDir}/log/fmriprep/sub-{subjectId}.txt',
-                freesurferLicenseFile='./licenses/freesurfer.txt',
+                logFile=f'{workDir}/log/fmriprep/sub-{subjectId}.txt',
+                freesurferLicenseFile=fetch_freesurfer_license(suffix=f'_fmriprep_all_{subjectId}'),
                 templateflowDataDir=fetch_mri_templates(suffix=f'_fmriprep_all_{subjectId}'),
                 nproc=nproc,
                 memMB=memGB*1000, # not 1024 / GiB
-                subjectId=subjectId,
+                subjectId=subjectId
             ),
             lambda didSucceed, subjectId: (
                 fetch_executable.cleanup(FMRIPREP_SUBJECT),
                 fetch_dataset.cleanup(subjectId),
+                copy_file(
+                    sourcePath=f'{workDir}/log/fmriprep/sub-{subjectId}.txt',
+                    destPath=f'{outputDir}/log/fmriprep/sub-{subjectId}.txt'),
+                fetch_freesurfer_license.cleanup(suffix=f'_fmriprep_all_{subjectId}'),
                 fetch_mri_templates.cleanup(suffix=f'_fmriprep_all_{subjectId}'),
                 didSucceed and remove_dir(
                     dirPath=f'{workDir}/fmriprep/sub-{subjectId}')
