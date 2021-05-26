@@ -651,7 +651,7 @@ if __name__ == '__main__':
                     subjectId,
                     dataset.getAnatSessionIdsBySubjectId(subjectId)[:2]
                 ),
-                copy_file(
+                isPipelineDistributed and copy_file(
                     sourcePath=f'{workDir}/log/smriprep/sub-{subjectId}.txt',
                     destPath=f'{outputDir}/log/smriprep/sub-{subjectId}.txt'),
                 fetch_freesurfer_license.cleanup(suffix=f'_smriprep_anat_{subjectId}'),
@@ -836,7 +836,7 @@ if __name__ == '__main__':
                 fetch_dataset.cleanup(subjectId, [sessionId]),
                 fetch_smriprep_derivatives.cleanup(subjectId,
                     dataset.getAnatSessionIdsBySubjectId(subjectId)[:1]),
-                copy_file(
+                isPipelineDistributed and copy_file(
                     sourcePath=f'{workDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt',
                     destPath=f'{outputDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt'),
                 # remove_file(filePath=f'{workDir}/log/fmriprep/sub-{subjectId}/ses-{sessionId}.txt'),  # commented, as might be done parallely to copy_file
@@ -878,7 +878,7 @@ if __name__ == '__main__':
             lambda didSucceed, subjectId: (
                 fetch_executable.cleanup(FMRIPREP_SUBJECT),
                 fetch_dataset.cleanup(subjectId),
-                copy_file(
+                isPipelineDistributed and copy_file(
                     sourcePath=f'{workDir}/log/fmriprep/sub-{subjectId}.txt',
                     destPath=f'{outputDir}/log/fmriprep/sub-{subjectId}.txt'),
                 fetch_freesurfer_license.cleanup(suffix=f'_fmriprep_all_{subjectId}'),
