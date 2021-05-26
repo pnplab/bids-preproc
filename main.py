@@ -473,10 +473,11 @@ if __name__ == '__main__':
             copy_file(sourcePath=origFilePath, destPath=destFilePath)
             return destFilePath
     def fetch_freesurfer_license_cleanup(suffix: str = ''):
-        origFilePath = './licenses/freesurfer.txt'
-        origFileName = os.path.basename(origFilePath)
-        destFilePath = f'{workerLocalDir}/{origFileName}{suffix}'
-        remove_file(filePath=destFilePath)
+        if isPipelineDistributed:
+            origFilePath = './licenses/freesurfer.txt'
+            origFileName = os.path.basename(origFilePath)
+            destFilePath = f'{workerLocalDir}/{origFileName}{suffix}'
+            remove_file(filePath=destFilePath)
     fetch_freesurfer_license.cleanup = fetch_freesurfer_license_cleanup
 
     # Setup fastrack fix source code retrival method.
