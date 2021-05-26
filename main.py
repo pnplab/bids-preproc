@@ -513,10 +513,11 @@ if __name__ == '__main__':
             copy_dir(sourcePath=origDirPath, destPath=destDirPath)
             return destDirPath
     def fetch_mri_templates_cleanup(suffix: str = ''):
-        origDirPath = templateflowDataDir
-        origDirName = os.path.basename(origDirPath)
-        destDirPath = f'{workerLocalDir}/{origDirName}{suffix}'
-        remove_dir(dirPath=destDirPath)
+        if isPipelineDistributed:
+            origDirPath = templateflowDataDir
+            origDirName = os.path.basename(origDirPath)
+            destDirPath = f'{workerLocalDir}/{origDirName}{suffix}'
+            remove_dir(dirPath=destDirPath)
     fetch_mri_templates.cleanup = fetch_mri_templates_cleanup
 
     # BidsValidator.
