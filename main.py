@@ -32,7 +32,7 @@ if __name__ == '__main__':
     # Retrieve args
     args = readCLIArgs()
     granularity = args.granularity
-    datasetDir = args.datasetPath
+    datasetDir = args.datasetPath.rstrip('/')  # strip trailing '/' otherwise os.path.basename will return null and break dar
     outputDir = args.outputDir
     vmEngine = args.vmEngine
     executor = args.executor
