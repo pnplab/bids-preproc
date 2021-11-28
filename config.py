@@ -381,6 +381,7 @@ FMRIPREP_SESSION = TaskConfig(
         "templateflowDataDir": InputDir,
         "freesurferLicenseFile": InputFile,
         "bidsFilterFile": InputFile,
-        "memMB": math.floor
+        "memMB": math.floor,
+        "fasttrackFixDir": InputDir
     }
 )

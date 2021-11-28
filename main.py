@@ -42,7 +42,7 @@ if __name__ == '__main__':
     enableSMRiPrep = args.enableSMRiPrep
     enableFMRiPrep = args.enableFMRiPrep
     enablePybidsCache = args.enablePybidsCache
-    fasttrackFixDir = os.path.dirname(os.path.realpath(__file__)) + '/smriprep-fasttrack-fix'
+    fasttrackFixDir = os.path.dirname(os.path.realpath(__file__)) + '/smriprep-0.8.1-fasttrack-fix'
     workerCount = args.workerCount
     nproc = args.workerCpuCount
     memGB = args.workerMemoryGB
