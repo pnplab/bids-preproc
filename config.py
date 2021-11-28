@@ -168,10 +168,10 @@ LIST_ARCHIVE_SESSIONS = TaskConfig(
 
 BIDS_VALIDATOR = TaskConfig(
     raw_executable='bids-validator',
-    singularity_image='../singularity-images/bids-validator-1.5.2.simg',
-    docker_image='bids/validator:v1.5.6',
+    singularity_image='../singularity-images/bids-validator-1.8.5.simg',
+    docker_image='bids/validator:v1.8.5',
     cmd='''
-        {0} "{datasetDir}"
+        {0} "{datasetDir}" --verbose
     ''',
     # Map paths to vm volumes using argument decorators.
     decorators={
@@ -181,8 +181,8 @@ BIDS_VALIDATOR = TaskConfig(
 
 MRIQC_SUBJECT = TaskConfig(
     raw_executable='mriqc',
-    singularity_image='../singularity-images/mriqc-0.15.2.simg',
-    docker_image='poldracklab/mriqc:0.15.2',
+    singularity_image='../singularity-images/mriqc-21.0.0rc2.simg',
+    docker_image='nipreps/mriqc:21.0.0rc2',
     cmd='''
         {0}
             --no-sub
@@ -207,8 +207,8 @@ MRIQC_SUBJECT = TaskConfig(
 
 MRIQC_GROUP = TaskConfig(
     raw_executable='mriqc',
-    singularity_image='../singularity-images/mriqc-0.15.2.simg',
-    docker_image='poldracklab/mriqc:0.15.2',
+    singularity_image='../singularity-images/mriqc-21.0.0rc2.simg',
+    docker_image='poldracklab/mriqc:21.0.0rc2',
     cmd='''
         {0}
             --no-sub
@@ -237,8 +237,8 @@ MRIQC_GROUP = TaskConfig(
 # cf. https://neurostars.org/t/tips-for-getting-a-bare-metal-installation-of-fmriprep-1-4-1-working/4660/2
 SMRIPREP_SUBJECT = TaskConfig(
     raw_executable='smriprep',
-    singularity_image='../singularity-images/smriprep-0.7.1.simg',
-    docker_image='nipreps/smriprep:0.7.1',
+    singularity_image='../singularity-images/smriprep-0.8.1.simg',
+    docker_image='nipreps/smriprep:0.8.1',
     cmd='''
         {0}
             --participant-label "{subjectId}"
@@ -269,8 +269,8 @@ SMRIPREP_SUBJECT = TaskConfig(
 
 FMRIPREP_SUBJECT = TaskConfig(
     raw_executable='fmriprep',
-    singularity_image='../singularity-images/fmriprep-20.2.1.simg',
-    docker_image='nipreps/fmriprep:20.2.1',
+    singularity_image='../singularity-images/fmriprep-20.2.6.simg',
+    docker_image='nipreps/fmriprep:20.2.6',
     cmd='''
         {0}
             --notrack
@@ -349,8 +349,8 @@ FMRIPREP_SESSION_FILTER = TaskConfig(
 # this log.
 FMRIPREP_SESSION = TaskConfig(
     raw_executable='fmriprep',
-    singularity_image='../singularity-images/fmriprep-20.2.1.simg',
-    docker_image='nipreps/fmriprep:20.2.1',
+    singularity_image='../singularity-images/fmriprep-20.2.6.simg',
+    docker_image='nipreps/fmriprep:20.2.6',
     cmd='''
         {0}
             --notrack
