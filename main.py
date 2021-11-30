@@ -634,6 +634,7 @@ if __name__ == '__main__':
                     # Limit to max two sessions in case there is T1 in every
                     # sessions (fmriprep will limit to one or two anat anyway).
                     # cf. https://fmriprep.org/en/0.6.3/workflows.html#longitudinal-processing
+                    # @warning this may breaks surface reconstruction because T2 are ignored!!
                     dataset.getAnatSessionIdsBySubjectId(subjectId)[:2]  # @todo @warning dev func for non-dar dataset
                 ),
                 workDir=f'{workDir}/smriprep/sub-{subjectId}',
@@ -802,8 +803,11 @@ if __name__ == '__main__':
                 client.shutdown()
             sys.exit(5)
 
-    # FMRiPrep: func by subjects [case A].
+    # FMRiPrep: func by session [case A].
     if enableFMRiPrep and granularity is Granularity.SESSION:
+        print('WARNING: session granularity may be broken when surface reconstruction is enabled, ' \
+             'which is not the case by default, cf. --fs-no-reconall option and main.py comments, ' \
+             'because T2 derivatives are ignored when copied inisde the session.')
         successfulSessionIds, failedSessionIds = scheduler.batchTask(
             'fmriprep_func',
             lambda subjectId, sessionId: fmriprep_session(
@@ -816,6 +820,7 @@ if __name__ == '__main__':
                 # Thus we have to provide the only anat session available
                 # instead, which is not necessarily the same session as the one
                 # being currently processing for func.
+                # @warning this may breaks surface reconstruction because T2 are ignored!!
                 anatsDerivativesDir=fetch_smriprep_derivatives(subjectId,
                     dataset.getAnatSessionIdsBySubjectId(subjectId)[:1]),
                 workDir=f'{workDir}/fmriprep/sub-{subjectId}/ses-{sessionId}',
