@@ -12,21 +12,21 @@ It does six things:
   as filesystem such as lustre, which we tested on the beluga cluster (compute canada):
   - cause fmriprep to randomly hang indefinitely due to process getting stuck in D-state mode (pending kernel-level state, likely due to the network filesystem drivers)
   - are slow (`seff` averages to 2.17% of CPU utilization for 92.36% for memory usage).
-  - are limited in the amount of file one can write (the 1M default per-user scratch file count limit is already broken for a single dataset such as kaminati, when considering fmriprep intermediary generated files)
-  and inner compute-node storage are too limited (a few hundreds gigs only) to store a single dataset, or even a single subject, with all fmriprep intermediary generated files (for kaminati).
-- monkey patch broken fmriprep anatomic fast-track mechanism, which bugs on some dataset, cf. https://github.com/nipreps/smriprep/issues/224
-- monitor unreachable dask workers (likely due to hypercomputer network congestion issues) and kill and reschedule the associated compute nodes when slurm is used.
+  - are limited in the amount of file one can write (the 1M default per-user scratch file count limit is already broken out for a single dataset such as kaminati, when considering for fmriprep intermediary generated files)
+  and inner compute-nodes storages are too limited (a few hundreds gigs only) to store a single dataset, or even a single subject, considering all fmriprep's intermediary generated files (for kaminati).
+- monkey patch currently broken fmriprep anatomic fast-track mechanism, which is buggy with some dataset, cf. https://github.com/nipreps/smriprep/issues/224
+- monitor unreachable dask workers (likely due to hypercomputer network congestion issues) and kill and reschedule their associated compute nodes, if dask+slurm is the used scheduler.
 
 The architecture should enable easy changes of the pipeline:
-- ie. partially download the dataset, such as a single session, at the relevant time instead of extracting it from dar.
-- ie. use a different orchestration system than slurm (for instance kubernetes, ..., basically anything, check both dask distributed and dask jobqueue documentations for all the options).
+- ie. to partially download the dataset, such as a single session, at the relevant time instead of extracting it from dar.
+- ie. to use a different orchestration system than slurm (for instance kubernetes, ..., basically anything, check both dask distributed and dask jobqueue documentations for most of the currently available options).
 
-Before use:
+Before use, you must:
 - setup the license/freesurfer.txt file (get a license from freesurfer website and put it inside that file, cf. fmriprep doc)
 - download the templateflow atlas using the script in `./scripts/download-templateflow-data.sh`
-- download and build the relevant singularity images, which is only required if singularity is used.
+- download and build the relevant singularity images (this step is only required if singularity is used):
   `mkdir ../singularity-images/; cd ../singularity-images/; singularity build bids-validator-1.8.5.simg docker://bids/validator:v1.8.5 ; singularity build fmriprep-20.2.6.simg docker://nipreps/fmriprep:20.2.6 ; singularity build smriprep-0.8.1.simg docker://nipreps/smriprep:0.8.1`.
-  file `config.py` might have to be adapted to get the proper path
+  file `config.py` might have to be adapted to get the proper path.
 
 Sample usage:
 - `python main.py --help`
