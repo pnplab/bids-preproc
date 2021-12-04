@@ -336,7 +336,7 @@ if __name__ == '__main__':
     # @note `adapt` instead of scale should allow to automatically restart dead
     # workers. cf. https://stackoverflow.com/a/61295019/939741
     if executor is Executor.SLURM:
-        cluster.adapt(minimum_jobs=1, maximum_jobs=effectiveWorkerCount)
+        cluster.adapt(minimum_jobs=1, maximum_jobs=min(dataset.getSubjectIds(), effectiveWorkerCount))
 
     # Setup dataset retrieval method (either path, or archive extraction).
     fetch_dataset = None
@@ -782,6 +782,21 @@ if __name__ == '__main__':
         for subjectId in subjectIds
         for sessionId in dataset.getSessionIdsBySubjectId(subjectId)
     ]
+
+    # Adapt worker count to right number in order to process sessions synchronously.
+    if granularity is Granularity.SESSION:
+        # Set workerCount to number of subject if == -1 and scale worker count
+        # accordingly slurm cluster scheduler is used.
+        effectiveWorkerCount = min(workerCount, len(sessionIds))
+        if workerCount == -1:
+            effectiveWorkerCount = len(sessionIds)
+        # Scale slurm worker count.
+        # Do not launch more worker than what we can use at the moment (thus max
+        # one per subject). This might be upscaled later on.
+        # @note `adapt` instead of scale should allow to automatically restart dead
+        # workers. cf. https://stackoverflow.com/a/61295019/939741
+        if executor is Executor.SLURM:
+            cluster.adapt(minimum_jobs=1, maximum_jobs=effectiveWorkerCount)
 
     # FMRiPrep: generate sessions' func file filters [case A].
     if enableFMRiPrep and granularity is Granularity.SESSION:
