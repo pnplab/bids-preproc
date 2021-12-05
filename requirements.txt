@@ -5,3 +5,4 @@ pybids
 dask_jobqueue
 dask_mpi
 tqdm==4.19.4
+bokeh
