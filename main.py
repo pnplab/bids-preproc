@@ -202,6 +202,9 @@ if __name__ == '__main__':
             # Retrieve stalled workers.
             deathTimeout = 60  # in sec
             stalledWorkerAddresses = []
+            # Skip looping if no worker at all.
+            if not client.scheduler_info() or 'workers' not in client.scheduler_info():
+                return
             workers = client.scheduler_info()['workers']
             for key, worker in workers.items():
                 workerAddress = key
