@@ -406,7 +406,7 @@ if __name__ == '__main__':
     # @note `adapt` instead of scale should allow to automatically restart dead
     # workers. cf. https://stackoverflow.com/a/61295019/939741
     if executor is Executor.SLURM:
-        cluster.adapt(minimum_jobs=1, maximum_jobs=min(dataset.getSubjectIds(), effectiveWorkerCount))
+        cluster.adapt(minimum_jobs=1, maximum_jobs=min(len(dataset.getSubjectIds()), effectiveWorkerCount))
 
     # Setup dataset retrieval method (either path, or archive extraction).
     fetch_dataset = None
