@@ -271,6 +271,73 @@ if __name__ == '__main__':
     extract_dataset_session = TaskFactory.generate(VMEngine.NONE, EXTRACT_DATASET_SESSION)
     list_archive_sessions = TaskFactory.generate(VMEngine.NONE, LIST_ARCHIVE_SESSIONS)
 
+    # Setup executable retrieval method (either direct or copy).
+    # @note
+    # We have to override this process although this is already coded within
+    # the TaskFactory in order to change the singularity path in case we decide
+    # to copy it on computational node, and thus don't have the final path
+    # until the task has started and we've copied it.
+    def fetch_executable(taskConfig: TaskConfig):
+        if vmEngine is VMEngine.NONE:
+            return taskConfig.raw_executable
+        elif vmEngine is VMEngine.DOCKER \
+             and taskConfig.docker_image is not None:
+            return taskConfig.docker_image
+        elif vmEngine is VMEngine.SINGULARITY and \
+             taskConfig.singularity_image is not None and \
+             not isPipelineDistributed:
+            return taskConfig.singularity_image
+        elif vmEngine is VMEngine.SINGULARITY and \
+             taskConfig.singularity_image is not None and \
+             isPipelineDistributed:
+            # Copy singularity image file to the local folder.
+            origImagePath = taskConfig.singularity_image
+            imageFilename = os.path.basename(origImagePath)
+            destImagePath = f'{workerLocalDir}/{imageFilename}'
+
+            # @warning
+            # Can't recursively fetch/copy 'singularity' executable for
+            # COPY_FILE task.
+            copy_file(sourcePath=origImagePath, destPath=destImagePath)
+
+            # Return the new path.
+            return destImagePath
+        else:
+            # Return raw executable, for tasks that don't have contenerized
+            # image.
+            return taskConfig.raw_executable
+    def fetch_executable_cleanup(taskConfig: TaskConfig):
+        if vmEngine is VMEngine.SINGULARITY and \
+             taskConfig.singularity_image is not None and \
+             isPipelineDistributed:
+            origImagePath = taskConfig.singularity_image
+            imageFilename = os.path.basename(origImagePath)
+            tmpImagePath = f'{workerLocalDir}/{imageFilename}'
+            remove_file(filePath=tmpImagePath)
+    fetch_executable.cleanup = fetch_executable_cleanup
+
+    # BidsValidator.
+    # @todo allow per subject bids validation when dataset > available disk
+    # space.
+    if enableBidsValidator and granularity:
+        print("warning: bids validation input and output streams will occur through shared filesystem (lustre?).")
+        didSucceed = scheduler.runTask(
+            'validate_bids',
+            lambda: bids_validator(
+                fetch_executable(BIDS_VALIDATOR),
+                datasetDir=datasetDir,
+                logFile=f'{outputDir}/log/validate-bids.txt'
+            ),
+            lambda didSucceed: (
+                fetch_executable.cleanup(BIDS_VALIDATOR)
+            )
+        )
+        if not didSucceed:
+            # Close dask slurm scheduler + workers.
+            if executor is Executor.SLURM:
+                client.shutdown()
+            sys.exit(1)
+
     # Archive dataset for faster IO if pipeline is distributed (+ prevent files
     # from being distributed across multiple LUSTRE slaves and fragmented,
     # which I suspect to cause random bugs + cope with Compute Canada file 
@@ -419,51 +486,6 @@ if __name__ == '__main__':
 
         fetch_dataset = fetch_dataset2
         fetch_dataset.cleanup = cleanup2
-    
-    # Setup executable retrieval method (either direct or copy).
-    # @note
-    # We have to override this process although this is already coded within
-    # the TaskFactory in order to change the singularity path in case we decide
-    # to copy it on computational node, and thus don't have the final path
-    # until the task has started and we've copied it.
-    def fetch_executable(taskConfig: TaskConfig):
-        if vmEngine is VMEngine.NONE:
-            return taskConfig.raw_executable
-        elif vmEngine is VMEngine.DOCKER \
-             and taskConfig.docker_image is not None:
-            return taskConfig.docker_image
-        elif vmEngine is VMEngine.SINGULARITY and \
-             taskConfig.singularity_image is not None and \
-             not isPipelineDistributed:
-            return taskConfig.singularity_image
-        elif vmEngine is VMEngine.SINGULARITY and \
-             taskConfig.singularity_image is not None and \
-             isPipelineDistributed:
-            # Copy singularity image file to the local folder.
-            origImagePath = taskConfig.singularity_image
-            imageFilename = os.path.basename(origImagePath)
-            destImagePath = f'{workerLocalDir}/{imageFilename}'
-
-            # @warning
-            # Can't recursively fetch/copy 'singularity' executable for
-            # COPY_FILE task.
-            copy_file(sourcePath=origImagePath, destPath=destImagePath)
-
-            # Return the new path.
-            return destImagePath
-        else:
-            # Return raw executable, for tasks that don't have contenerized
-            # image.
-            return taskConfig.raw_executable
-    def fetch_executable_cleanup(taskConfig: TaskConfig):
-        if vmEngine is VMEngine.SINGULARITY and \
-             taskConfig.singularity_image is not None and \
-             isPipelineDistributed:
-            origImagePath = taskConfig.singularity_image
-            imageFilename = os.path.basename(origImagePath)
-            tmpImagePath = f'{workerLocalDir}/{imageFilename}'
-            remove_file(filePath=tmpImagePath)
-    fetch_executable.cleanup = fetch_executable_cleanup
 
     # Setup freesurfer license retrieval method.
     def fetch_freesurfer_license(suffix: str = ''):
@@ -522,47 +544,6 @@ if __name__ == '__main__':
             destDirPath = f'{workerLocalDir}/{origDirName}{suffix}'
             remove_dir(dirPath=destDirPath)
     fetch_mri_templates.cleanup = fetch_mri_templates_cleanup
-
-    # BidsValidator.
-    # @todo allow per subject bids validation when dataset > available disk
-    # space.
-    if enableBidsValidator and granularity is not Granularity.DATASET:
-        print("warning: bids validation input and output streams will occur through shared filesystem (lustre?).")
-        didSucceed = scheduler.runTask(
-            'validate_bids',
-            lambda: bids_validator(
-                fetch_executable(BIDS_VALIDATOR),
-                datasetDir=datasetDir,
-                logFile=f'{outputDir}/log/validate-bids.txt'
-            ),
-            lambda didSucceed: (
-                fetch_executable.cleanup(BIDS_VALIDATOR)
-            )
-        )
-        if not didSucceed:
-            # Close dask slurm scheduler + workers.
-            if executor is Executor.SLURM:
-                client.shutdown()
-            sys.exit(1)
-    elif enableBidsValidator and granularity is Granularity.DATASET:
-        print("warning: bids validation output stream will be sustained over shared filesystem (lustre?).")
-        didSucceed = scheduler.runTask(
-            'validate_bids',
-            lambda: bids_validator(
-                fetch_executable(BIDS_VALIDATOR),
-                datasetDir=fetch_dataset(),
-                logFile=f'{outputDir}/log/validate-bids.txt'
-            ),
-            lambda didSucceed: (
-                fetch_executable.cleanup(BIDS_VALIDATOR),
-                fetch_dataset.cleanup()
-            )
-        )
-        if not didSucceed:
-            # Close dask slurm scheduler + workers.
-            if executor is Executor.SLURM:
-                client.shutdown()
-            sys.exit(1)
 
     # MRIQC: qc by subjects.
     subjectIds = dataset.getSubjectIds()
