@@ -248,6 +248,7 @@ SMRIPREP_SUBJECT = TaskConfig(
             --nprocs {nproc}
             --mem-gb {memGB}
             --fs-no-reconall
+            --skull-strip-mode "{skullStripMode}"
             -vvv
             --fs-license "{freesurferLicenseFile}"
             -w "{workDir}"
@@ -280,6 +281,7 @@ FMRIPREP_SUBJECT = TaskConfig(
             --mem-mb {memMB}
             -vvv
             --fs-no-reconall
+            --skull-strip-t1w "{skullStripT1w}"
             --fs-license "{freesurferLicenseFile}"
             -w "{workDir}"
             "{datasetDir}"
@@ -362,6 +364,7 @@ FMRIPREP_SESSION = TaskConfig(
             --mem-mb {memMB}
             -vvv
             --fs-no-reconall
+            --skull-strip-t1w "{skullStripT1w}"
             --fs-license "{freesurferLicenseFile}"
             --anat-derivatives "{anatsDerivativesDir}"
             -w "{workDir}"

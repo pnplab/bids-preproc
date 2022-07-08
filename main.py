@@ -42,6 +42,7 @@ if __name__ == '__main__':
     enableSMRiPrep = args.enableSMRiPrep
     enableFMRiPrep = args.enableFMRiPrep
     enablePybidsCache = args.enablePybidsCache
+    mriprepSkullstrip = args.mriprepSkullstrip
     fasttrackFixDir = os.path.dirname(os.path.realpath(__file__)) + '/smriprep-0.8.1-fasttrack-fix'
     workerCount = args.workerCount
     nproc = args.workerCpuCount
@@ -83,7 +84,7 @@ if __name__ == '__main__':
         client = dask.distributed.Client(cluster)
         scheduler = DaskScheduler(f'{outputDir}/.task_cache.csv', client)
     elif executor is Executor.SLURM:
-        # Convert walltime to seconds in order to restart worker adterwards if
+        # Convert walltime to seconds in order to restart worker afterwards if
         # needed.
         workerWallTimeArray = workerWallTime.split(sep='-')
         workerWallTimeAsSec = 0
@@ -628,6 +629,7 @@ if __name__ == '__main__':
                 templateflowDataDir=fetch_mri_templates(suffix=f'_smriprep_anat_{subjectId}'),
                 nproc=nproc,
                 memGB=memGB,
+                skullStripMode=mriprepSkullstrip,
                 subjectId=subjectId
             ),
             lambda didSucceed, subjectId: (
@@ -877,6 +879,7 @@ if __name__ == '__main__':
                 templateflowDataDir=fetch_mri_templates(suffix=f'_fmriprep_all_{subjectId}'),
                 nproc=nproc,
                 memMB=memGB*1000, # not 1024 / GiB
+                skullStripT1w=mriprepSkullstrip,
                 subjectId=subjectId
             ),
             lambda didSucceed, subjectId: (

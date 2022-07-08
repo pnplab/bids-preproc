@@ -31,6 +31,15 @@ class Granularity(Enum):
     def __str__(self):
         return self.value
 
+class MriprepSkullStrip(Enum):
+    FORCE = 'force'
+    SKIP = 'skip'
+    AUTO = 'auto'
+
+    # Used by argparse to provide user CLI input arg values.
+    def __str__(self):
+        return self.value
+
 
 def readCLIArgs():
     parser = argparse.ArgumentParser(
@@ -96,6 +105,18 @@ def readCLIArgs():
         '--enable-pybids-cache',
         action='store_true',
         dest='enablePybidsCache'
+    )
+    parser.add_argument(
+        '--mriprep-skullstrip',
+        dest='mriprepSkullstrip',
+        type=MriprepSkullStrip,
+        choices=list(MriprepSkullStrip),
+        help='''
+        whether to enable or disable skull stripping from f/smriprep.
+        useful to skip input T1 that have already been skullstripped.
+        ''',
+        required=False,
+        default=MriprepSkullStrip.FORCE
     )
     parser.add_argument(
         '--reset',
